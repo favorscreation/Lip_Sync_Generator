@@ -1,0 +1,62 @@
+﻿<Window x:Class="Lip_Sync_Generator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Lip_Sync_Generator"
+        mc:Ignorable="d"
+        Title="Lip Sync Generator" Height="800" Width="900" Loaded="Window_Loaded" MinWidth="900" MinHeight="800">
+    <Grid>
+        <Button x:Name="Analyze_Button" Content="Analyze" VerticalAlignment="Bottom" Height="49" Margin="634,0,0,88" Click="Analyze_Click" HorizontalAlignment="Left" Width="200"/>
+
+        <Border BorderBrush="Black" BorderThickness="1" Margin="10,32,0,0" Height="200" VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" RenderTransformOrigin="0.49,1.003">
+            <Image x:Name="image1" DragOver="image_DragOver" Drop="image_Drop" AllowDrop="True"/>
+        </Border>
+        <Border BorderBrush="Black" BorderThickness="1" Margin="218,32,0,0" Height="200" VerticalAlignment="Top" HorizontalAlignment="Left" Width="200">
+            <Image x:Name="image2" DragOver="image_DragOver" Drop="image_Drop" AllowDrop="True"/>
+        </Border>
+        <Border BorderBrush="Black" BorderThickness="1" Margin="425,32,0,0" Height="200" VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" AllowDrop="True">
+            <Image x:Name="image3" DragOver="image_DragOver" Drop="image_Drop" AllowDrop="True"/>
+        </Border>
+        <Border BorderBrush="Black" BorderThickness="1" Margin="10,263,0,0" Height="200" VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" AllowDrop="True">
+            <Image x:Name="eye1" DragOver="image_DragOver" Drop="image_Drop" AllowDrop="True"/>
+        </Border>
+        <Border BorderBrush="Black" BorderThickness="1" Margin="218,263,0,0" Height="200" VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" AllowDrop="True">
+            <Image x:Name="eye2" DragOver="image_DragOver" Drop="image_Drop" AllowDrop="True"/>
+        </Border>
+        <Border BorderBrush="Black" BorderThickness="1" Margin="425,263,0,0" Height="200" VerticalAlignment="Top" HorizontalAlignment="Left" Width="200" AllowDrop="True">
+            <Image x:Name="eye3" DragOver="image_DragOver" Drop="image_Drop" AllowDrop="True"/>
+        </Border>
+        <TextBox x:Name="text_box" HorizontalAlignment="Left" Margin="10,492,0,34" TextWrapping="Wrap" Width="405" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"/>
+        <ListBox x:Name="drop_box" d:ItemsSource="{Binding}" Margin="420,492,0,34" Drop="drop_box_Drop" DragOver="drop_box_DragOver" AllowDrop="True" HorizontalAlignment="Left" Width="205">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Margin="2">
+                        <TextBlock Text ="{Binding Name}" Margin="2"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <Button x:Name="Run_Button" Content="Run" HorizontalAlignment="Left" Margin="634,0,0,34" Width="200" Click="Run_Button_Click" Height="49" VerticalAlignment="Bottom"/>
+        <TextBlock HorizontalAlignment="Left" Margin="13,469,0,0" TextWrapping="Wrap" Text="Analyze" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"/>
+        <TextBlock HorizontalAlignment="Left" Margin="423,469,0,0" TextWrapping="Wrap" Text="Sound Source" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,6,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"><Run Text="Bas"/><Run Text="e"/><Run Language="ja-jp" Text="1"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="218,6,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"><Run Text="Base"/><Run Language="ja-jp" Text="2"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="425,6,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"><Run Text="Base"/><Run Language="ja-jp" Text="3"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="10,237,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"><Run Text="Eye "/><Run Language="ja-jp" Text="open"/><LineBreak/><Run Language="ja-jp"/><LineBreak/><Run/><LineBreak/><Run/></TextBlock>
+        <TextBox x:Name="sample_scale_TB" Margin="695,164,0,0" TextWrapping="Wrap" Text="100" VerticalAlignment="Top" HorizontalAlignment="Left" Width="120"/>
+        <TextBox x:Name="downside_threshold_TB" HorizontalAlignment="Left" Margin="695,110,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="120"/>
+        <TextBox x:Name="upside_threshold_TB" HorizontalAlignment="Left" Margin="695,56,0,0" TextWrapping="Wrap" Text="4" VerticalAlignment="Top" Width="120"/>
+        <TextBlock HorizontalAlignment="Left" Margin="634,35,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="Upside"/><Run Language="ja-jp" Text=" "/><Run Text="threshold"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="634,89,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Language="ja-jp" Text="Downside"/><Run Text=" threshold"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="634,143,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Language="ja-jp" Text="Sample Scale"/><LineBreak/><Run Language="ja-jp"/></TextBlock>
+        <TextBox x:Name="infoLine" Margin="10,0,0,10" TextWrapping="Wrap" Height="19" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="824"/>
+        <TextBlock HorizontalAlignment="Left" Margin="218,237,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"><Run Text="Eye "/><Run Language="ja-jp" Text="half"/><LineBreak/><Run/><LineBreak/><Run/><LineBreak/><Run/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="425,237,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="113" FontSize="16"><Run Text="Eye "/><Run Language="ja-jp" Text="close"/><LineBreak/><Run/><LineBreak/><Run/><LineBreak/><Run/></TextBlock>
+        <TextBox x:Name="blink_interval_frame_TB" Margin="695,224,0,0" TextWrapping="Wrap" Text="72" VerticalAlignment="Top" HorizontalAlignment="Left" Width="120"/>
+        <TextBlock HorizontalAlignment="Left" Margin="634,204,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="blink interval"/><Run Language="ja-jp" Text=" frame"/></TextBlock>
+        <TextBox x:Name="blink_interval_random_frame_TB" Margin="695,273,0,0" TextWrapping="Wrap" Text="24" VerticalAlignment="Top" HorizontalAlignment="Left" Width="120"/>
+        <TextBlock HorizontalAlignment="Left" Margin="634,253,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Text="Blink interval random frame"/>
+
+    </Grid>
+</Window>
