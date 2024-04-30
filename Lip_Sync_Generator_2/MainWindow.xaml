@@ -34,7 +34,7 @@
         <TextBlock HorizontalAlignment="Left" Margin="515,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Language="ja-jp" Text="Main"/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="515,183,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Language="ja-jp" Text="Eyes"/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="10,13,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Language="ja-jp" Text="Preview"/></TextBlock>
-        <ListBox x:Name="Audio_listBox" d:ItemsSource="{Binding}" Margin="515,384,0,0" HorizontalAlignment="Left" Width="200" Height="147" VerticalAlignment="Top" AllowDrop="True" DragOver="drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Audio_listBox_SelectionChanged">
+        <ListBox x:Name="Audio_listBox" d:ItemsSource="{Binding}" Margin="515,384,0,0" HorizontalAlignment="Left" Width="200" Height="147" VerticalAlignment="Top" AllowDrop="True" DragOver="drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Audio_listBox_SelectionChanged" SelectionMode="Extended">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Name}"/>
