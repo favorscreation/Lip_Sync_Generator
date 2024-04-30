@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Lip_Sync_Generator_2")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3473e8b8a0e144ae698d80beb383d31df1c328a8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dd7f60a2903f0bff72a0374d99fd9bfe4494d728")]
 [assembly: System.Reflection.AssemblyProductAttribute("Lip_Sync_Generator_2")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Lip_Sync_Generator_2")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

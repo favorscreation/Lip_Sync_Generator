@@ -30,7 +30,10 @@ namespace Lip_Sync_Generator_2
     /// </summary>
     public partial class MainWindow : Window
     {
-        Config config = new Config();
+        Config.Values config = new Config.Values();
+        public Config.FileList fileList_main = new Config.FileList();
+        public Config.FileList fileList_Eyes = new Config.FileList();
+        public Config.FileList fileList_Audio = new Config.FileList();
 
         public MainWindow()
         {
@@ -39,22 +42,36 @@ namespace Lip_Sync_Generator_2
             //ffmpegのパスを通す
             GlobalFFOptions.Configure(options => options.BinaryFolder = "./ffmpeg");
 
-            config = new Config
-            {
-                framerate = 24,
-                average_samples = 1000,
-                sample_scale = 100,
-                smallMouth_th = 1,
-                bigMouth_th = 4,
-                blink_intervalFrame = 72,
-                blink_interval_randomFrame = 24
-            };
-            Debug.WriteLine(JsonUtil.ToJson(config));
-        }
+            config = new Config.Values();
 
-        public FileList fileList_main = new FileList();
-        public FileList fileList_Eyes = new FileList();
-        public FileList fileList_Audio = new FileList();
+            string config_path = "config.json";
+            string str = "";
+
+            if (File.Exists("config.json"))
+                str = new StreamReader(config_path, Encoding.GetEncoding("utf-8")).ReadToEnd();
+
+            if (JsonUtil.JsonToConfig(str) == null)
+                config = new Config.Values
+                {
+                    framerate = 24,
+                    average_samples = 1000,
+                    sample_scale = 100,
+                    smallMouth_th = 1,
+                    bigMouth_th = 4,
+                    blink_intervalFrame = 72,
+                    blink_interval_randomFrame = 24
+                };
+            else
+                config = JsonUtil.JsonToConfig(str)!;
+
+            TextBox1.Text = "frameRate = " + config!.framerate;
+            TextBox2.Text = "average samples = " + config!.average_samples;
+            TextBox3.Text = "sample scale = " + config!.sample_scale;
+            TextBox4.Text = "smallMouth th = " + config!.smallMouth_th;
+            TextBox5.Text = "bigMouth th = " + config!.bigMouth_th;
+            TextBox6.Text = "blink interval Frame = " + config!.blink_intervalFrame;
+            TextBox7.Text = "blink interval RandomFrame = " + config!.blink_interval_randomFrame;
+        }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -63,7 +80,7 @@ namespace Lip_Sync_Generator_2
             Audio_listBox.ItemsSource = fileList_Audio;
         }
 
-        private void UpItem(ListBox listBox, FileList list)
+        private void UpItem(ListBox listBox, Config.FileList list)
         {
             //リストボックスで選択されているインデックス取得
             int index = listBox.SelectedIndex;
@@ -83,7 +100,7 @@ namespace Lip_Sync_Generator_2
             listBox.SelectedIndex = index - 1;
         }
 
-        private void DownItem(ListBox listBox, FileList list)
+        private void DownItem(ListBox listBox, Config.FileList list)
         {
             int index = listBox.SelectedIndex;
 
@@ -126,8 +143,8 @@ namespace Lip_Sync_Generator_2
                 {
                     Debug.WriteLine(name);
 
-                    var itemlist = (FileList)((ListBox)sender).ItemsSource;
-                    itemlist.Add(new FileName(Path.GetFileName(name), name));
+                    var itemlist = (Config.FileList)((ListBox)sender).ItemsSource;
+                    itemlist.Add(new Config.FileName(Path.GetFileName(name), name));
                 }
                 ((ListBox)sender).SelectedIndex = 0;
             }
@@ -171,11 +188,6 @@ namespace Lip_Sync_Generator_2
             }
         }
 
-        /// <summary>
-        /// 共通変数
-        /// </summary>
-        commonVariable variable = new commonVariable();
-
         List<float> CurrentAverageList = new List<float>();
 
         /// <summary>
@@ -201,15 +213,15 @@ namespace Lip_Sync_Generator_2
 
             float time = (float)audio_reader.TotalTime.TotalSeconds;
 
-            variable.average_samples = (int)(samples.Length / time / variable.video_framerate);
+            config!.average_samples = (int)(samples.Length / time / config.framerate);
 
 
             //平均化処理
-            for (int i = 0; i < samples.Length; i += variable.average_samples)
+            for (int i = 0; i < samples.Length; i += config.average_samples)
             {
 
                 float sum = 0;
-                for (int j = 0; j < variable.average_samples; j++)
+                for (int j = 0; j < config.average_samples; j++)
                 {
                     //samplesの範囲を超えないようにif
                     if (i + j >= samples.Length)
@@ -218,13 +230,16 @@ namespace Lip_Sync_Generator_2
                     //絶対値化
                     sum += Math.Abs(samples[i + j]);
                 }
-                averageList.Add(sum / (float)variable.average_samples);
+                averageList.Add(sum / (float)config.average_samples);
             }
 
 
             return averageList;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
         private void DrawingChart()
         {
             audioChart.Series.Clear(); //描画領域のクリア
@@ -234,14 +249,14 @@ namespace Lip_Sync_Generator_2
             audioChart.AxisX[0].MinValue = 0;
 
             //データ作成
-            double[] ys1 = Enumerable.Range(0, CurrentAverageList.Count).Select(i => (double)CurrentAverageList[i] * variable.sample_scale).ToArray();
+            double[] ys1 = Enumerable.Range(0, CurrentAverageList.Count).Select(i => (double)CurrentAverageList[i] * config!.sample_scale).ToArray();
 
             LineSeries lineSeries = new LineSeries();
             lineSeries.PointGeometry = null;
             lineSeries.Values = new ChartValues<double>(ys1);
 
 
-            audioChart.Series.Add(lineSeries); //LiveChartsにシリーズを登録
+            audioChart.Series.Add(lineSeries); //シリーズを登録
         }
 
         private void Audio_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -305,9 +320,9 @@ namespace Lip_Sync_Generator_2
             Mat input_mat2 = Cv2.ImRead(pic_path2, ImreadModes.Unchanged);
             Mat input_mat3 = Cv2.ImRead(pic_path3, ImreadModes.Unchanged);
             //透明ピクセルを置換
-            Transparent_replacement(input_mat1);
-            Transparent_replacement(input_mat2);
-            Transparent_replacement(input_mat3);
+            MatFunction.Transparent_replacement(input_mat1);
+            MatFunction.Transparent_replacement(input_mat2);
+            MatFunction.Transparent_replacement(input_mat3);
             //透明度削除
             input_mat1 = input_mat1.CvtColor(ColorConversionCodes.BGRA2BGR);
             input_mat2 = input_mat2.CvtColor(ColorConversionCodes.BGRA2BGR);
@@ -325,7 +340,7 @@ namespace Lip_Sync_Generator_2
             Mat input_eye1 = new Mat(size, MatType.CV_8UC4);
             Mat input_eye2 = new Mat(size, MatType.CV_8UC4);
             Mat input_eye3 = new Mat(size, MatType.CV_8UC4);
-
+                
             //目のファイルが存在するなら
             if (eye_exist)
             {
@@ -335,25 +350,25 @@ namespace Lip_Sync_Generator_2
             }
 
             //透明色を黒に変更
-            Transparent_replacement_ToBlack(input_eye1);
-            Transparent_replacement_ToBlack(input_eye2);
-            Transparent_replacement_ToBlack(input_eye3);
+            MatFunction.Transparent_replacement_ToBlack(input_eye1);
+            MatFunction.Transparent_replacement_ToBlack(input_eye2);
+            MatFunction.Transparent_replacement_ToBlack(input_eye3);
             //透明度削除
             input_eye1 = input_eye1.CvtColor(ColorConversionCodes.BGRA2BGR);
             input_eye2 = input_eye2.CvtColor(ColorConversionCodes.BGRA2BGR);
             input_eye3 = input_eye3.CvtColor(ColorConversionCodes.BGRA2BGR);
 
 
-            VideoWriter vw = new VideoWriter(temp_mov_path, FourCC.MP4V, variable.video_framerate, size);
+            VideoWriter vw = new VideoWriter(temp_mov_path, FourCC.MP4V, config!.framerate, size);
 
 
             //目のまばたき乱数を生成
             List<int> reserveFrame = new List<int>();
             for (int i = 0; i < averageListCopy.Count; i++)
             {
-                if (i % variable.blink_intervalFrame == 0 && i != 0)
+                if (i % config.blink_intervalFrame == 0 && i != 0)
                 {
-                    reserveFrame.Add(i - random.Next(0, variable.blink_interval_randomFrame));
+                    reserveFrame.Add(i - random.Next(0, config.blink_interval_randomFrame));
                 }
             }
 
@@ -365,19 +380,25 @@ namespace Lip_Sync_Generator_2
 
                 for (int frame = 0; frame < averageListCopy.Count; frame++)
                 {
-                    Debug.WriteLine("frame:" + frame);
+                    //Debug.WriteLine("frame:" + frame);
+
+                    if (frame % 10 == 0)
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            Notice_TextBox.Text = ((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
+                        });
 
 
                     using (var output_mat = basemat.Clone())
                     {
 
-                        float sens = averageListCopy[frame] * variable.sample_scale;
+                        float sens = averageListCopy[frame] * config.sample_scale;
 
-                        if (sens >= variable.bigMouth_sens)
+                        if (sens >= config.bigMouth_th)
                         {
                             input_mat3.CopyTo(output_mat);   //大きい口
                         }
-                        else if (sens > variable.smallMouth_sens && sens < variable.bigMouth_sens)
+                        else if (sens > config.smallMouth_th && sens < config.bigMouth_th)
                         {
                             input_mat2.CopyTo(output_mat);  //中くらいの口
                         }
@@ -433,65 +454,11 @@ namespace Lip_Sync_Generator_2
             File.Delete(temp_mov_path);
         }
 
-        /// <summary>
-        ///         //透明ピクセルを青に置換
-        /// </summary>
-        /// <param name="mat"></param>
-        private void Transparent_replacement(Mat mat)
-        {
-            //ポインタによるアクセス
-            unsafe
-            {
-                byte* b = mat.DataPointer;
-                for (int i = 0; i < mat.Height; i++)
-                {
-                    for (int j = 0; j < mat.Width; j++)
-                    {
-                        if (b[3] == 0)
-                        {
-                            b[0] = 255; //B
-                            b[1] = 0;   //G
-                            b[2] = 0;   //R
-                            b[3] = 255; //A
-                        }
-                        b = b + 4;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 透明ピクセルを黒に置換　マスク処理用
-        /// </summary>
-        /// <param name="mat"></param>
-        private void Transparent_replacement_ToBlack(Mat mat)
-        {
-            //ポインタによるアクセス
-            unsafe
-            {
-                byte* b = mat.DataPointer;
-                for (int i = 0; i < mat.Height; i++)
-                {
-                    for (int j = 0; j < mat.Width; j++)
-                    {
-                        if (b[3] == 0)
-                        {
-                            b[0] = 0; //B
-                            b[1] = 0; //G
-                            b[2] = 0; //R
-                            b[3] = 0; //A
-                        }
-                        b = b + 4;
-                    }
-                }
-            }
-        }
-
         private async void Run()
         {
             Notice_TextBox.Text = "Run";
             Run_Button.IsEnabled = false;
-            var selectedItems = Audio_listBox.SelectedItems?.ToList<FileName>() ?? new();
+            var selectedItems = Audio_listBox.SelectedItems?.ToList<Config.FileName>() ?? new();
             await Task.Run(() =>
             {
 
@@ -499,6 +466,7 @@ namespace Lip_Sync_Generator_2
                 {
                     if (selectedItems.Count == 0)
                     {
+                        MessageBox.Show("ファイルが不足しています。","Error");
                         throw new Exception("Item == 0");
                     }
                     //スレッド数を8に制限
@@ -517,11 +485,11 @@ namespace Lip_Sync_Generator_2
                 }
                 finally
                 {
-                    this.Dispatcher.Invoke((Action)(() =>
+                    this.Dispatcher.Invoke(() =>
                     {
                         Notice_TextBox.Text = "";
                         Run_Button.IsEnabled = true;
-                    }));
+                    });
                 }
 
             });
@@ -542,99 +510,6 @@ namespace Lip_Sync_Generator_2
         {
             if (Eyes_listBox.SelectedIndex >= 0)
                 fileList_Eyes.RemoveAt(Eyes_listBox.SelectedIndex);
-        }
-    }
-
-
-    public class Config
-    {
-        // 文字列型
-        [JsonPropertyName("framerate")]
-        public float? framerate { get; set; }
-
-        [JsonPropertyName("average samples")]
-        public float? average_samples { get; set; }
-
-        [JsonPropertyName("sample scale")]
-        public float? sample_scale { get; set; }
-
-        [JsonPropertyName("bigMouth threshold")]
-        public float? bigMouth_th { get; set; }
-
-        [JsonPropertyName("smallMouth threshold")]
-        public float? smallMouth_th { get; set; }
-
-        [JsonPropertyName("blink intervalFrame")]
-        public float? blink_intervalFrame { get; set; }
-
-        [JsonPropertyName("blink intervalRandomFrame")]
-        public float? blink_interval_randomFrame { get; set; }
-    }
-
-
-    public class commonVariable
-    {
-        public commonVariable() : base()
-        {
-            video_framerate = 24;
-            average_samples = 1000;
-            sample_scale = 100;
-            bigMouth_sens = 4;
-            smallMouth_sens = 1;
-            blink_intervalFrame = 72;
-            blink_interval_randomFrame = 24;
-        }
-
-        public float video_framerate { get; set; }
-        //平均化するサンプル数
-        public int average_samples { get; set; }
-        //ボリューム倍率
-        public float sample_scale { get; set; }
-        //大きな口にするしきい値
-        public float bigMouth_sens { get; set; }
-        //小さい口にするしきい値
-        public float smallMouth_sens { get; set; }
-
-        public int blink_intervalFrame { get; set; }
-        public int blink_interval_randomFrame { get; set; }
-    }
-
-
-
-    public class FileList : ObservableCollection<FileName>
-    {
-        public FileList() : base()
-        {
-            /*
-            Add(new FileName("file1", "path1"));
-            Add(new FileName("file2", "path2"));
-            Add(new FileName("file3", "path3"));
-            Add(new FileName("file4", "path4"));
-            */
-        }
-    }
-
-    public class FileName
-    {
-        private string fileName;
-        private string filePath;
-
-        public FileName(string name, string path)
-        {
-            this.fileName = name;
-            this.filePath = path;
-        }
-
-        public string Name
-        {
-            get { return fileName; }
-            set { fileName = value; }
-        }
-
-        public string Path
-        {
-            get { return filePath; }
-            set { filePath = value; }
         }
     }
 
