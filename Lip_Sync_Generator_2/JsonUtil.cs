@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -27,7 +28,30 @@ namespace Lip_Sync_Generator_2
             }
             catch (JsonException e)
             {
-                Console.WriteLine(e.Message);
+                Debug.WriteLine(e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 入力のJSON文字列をクラスに変換します。
+        /// </summary>
+        /// <param name="json">JSON文字列</param>
+        /// <returns>SampleUserPoco型の出力</returns>
+        public static Config.Values? JsonToConfig(string json)
+        {
+            if (String.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+            try
+            {
+                Config.Values? poco = JsonSerializer.Deserialize<Config.Values>(json, GetOption());
+                return poco;
+            }
+            catch (JsonException e)
+            {
+                Debug.WriteLine(e.Message);
                 return null;
             }
         }

@@ -49,6 +49,15 @@
         <TextBox x:Name="Notice_TextBox" Margin="10,0,10,10" TextWrapping="Wrap" Text="TextBox" Height="18" VerticalAlignment="Bottom"/>
         <Button x:Name="delete_main_Button" Content="delete" HorizontalAlignment="Left" Margin="515,151,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="delete_main_Button_Click"/>
         <Button x:Name="delete_eyes_Button" Content="delete" HorizontalAlignment="Left" Margin="515,324,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="delete_eyes_Button_Click"/>
+        <Grid Margin="723,0,0,116" Height="162" VerticalAlignment="Bottom">
+            <TextBlock x:Name="TextBox1" HorizontalAlignment="Left" Margin="10,12,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+            <TextBlock x:Name="TextBox2" HorizontalAlignment="Left" Margin="10,33,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+            <TextBlock x:Name="TextBox3" HorizontalAlignment="Left" Margin="10,54,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+            <TextBlock x:Name="TextBox4" HorizontalAlignment="Left" Margin="10,75,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+            <TextBlock x:Name="TextBox5" HorizontalAlignment="Left" Margin="10,94,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+            <TextBlock x:Name="TextBox6" HorizontalAlignment="Left" Margin="10,115,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+            <TextBlock x:Name="TextBox7" HorizontalAlignment="Left" Margin="10,136,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+        </Grid>
 
     </Grid>
 </Window>
