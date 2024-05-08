@@ -35,6 +35,38 @@ namespace Lip_Sync_Generator_2
             public int blink_interval_randomFrame { get; set; }
         }
 
+        public class FileCollection
+        {
+            FileList audioFiles;
+            FileList bodyFiles;
+            FileList eyesFiles;
+
+            public FileCollection() : base()
+            {
+                audioFiles = new FileList();
+                bodyFiles = new FileList();
+                eyesFiles = new FileList();
+            }
+
+            public FileList Audio
+            {
+                get { return audioFiles; }
+                set { audioFiles = (FileList)value; }
+            }
+
+            public FileList Body
+            {
+                get { return bodyFiles; }
+                set { bodyFiles = (FileList)value; }
+            }
+
+            public FileList Eyes
+            {
+                get { return eyesFiles; }
+                set { eyesFiles = (FileList)value; }
+            }
+        }
+
 
         public class FileList : ObservableCollection<FileName>
         {
