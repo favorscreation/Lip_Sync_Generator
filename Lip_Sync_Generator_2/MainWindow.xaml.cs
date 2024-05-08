@@ -22,6 +22,8 @@ using Window = System.Windows.Window;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Win32;
+using System.Security.Cryptography;
 
 namespace Lip_Sync_Generator_2
 {
@@ -31,9 +33,7 @@ namespace Lip_Sync_Generator_2
     public partial class MainWindow : Window
     {
         Config.Values config = new Config.Values();
-        public Config.FileList fileList_main = new Config.FileList();
-        public Config.FileList fileList_Eyes = new Config.FileList();
-        public Config.FileList fileList_Audio = new Config.FileList();
+        public Config.FileCollection fileCollection = new Config.FileCollection();
 
         public MainWindow()
         {
@@ -42,15 +42,22 @@ namespace Lip_Sync_Generator_2
             //ffmpegのパスを通す
             GlobalFFOptions.Configure(options => options.BinaryFolder = "./ffmpeg");
 
+            Encoding enc = Encoding.GetEncoding("utf-8");
+
             config = new Config.Values();
 
-            string config_path = "config.json";
+            string config_path = @"config\config.json";
             string str = "";
 
-            if (File.Exists("config.json"))
-                str = new StreamReader(config_path, Encoding.GetEncoding("utf-8")).ReadToEnd();
+            if (File.Exists(@"config\config.json"))
+                str = new StreamReader(config_path, enc).ReadToEnd();
+
+            //configフォルダがなければ作成
+            if (Directory.Exists("config") == false)
+                Directory.CreateDirectory("config");
 
             if (JsonUtil.JsonToConfig(str) == null)
+            {
                 config = new Config.Values
                 {
                     framerate = 24,
@@ -61,8 +68,20 @@ namespace Lip_Sync_Generator_2
                     blink_intervalFrame = 72,
                     blink_interval_randomFrame = 24
                 };
+                Notice_TextBox.Text = "デフォルト設定が適用されました";
+                //Debug.WriteLine(JsonUtil.ToJson(config));
+
+                //設定ファイル作成
+                using (StreamWriter writer = new StreamWriter(config_path, false, enc))
+                {
+                    writer.WriteLine(JsonUtil.ToJson(config));
+                }
+            }
             else
+            {
                 config = JsonUtil.JsonToConfig(str)!;
+                Notice_TextBox.Text = "設定(外部ファイル)を読み込みました";
+            }
 
             TextBox1.Text = "frameRate = " + config!.framerate;
             TextBox2.Text = "average samples = " + config!.average_samples;
@@ -75,9 +94,7 @@ namespace Lip_Sync_Generator_2
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            main_listBox.ItemsSource = fileList_main;
-            Eyes_listBox.ItemsSource = fileList_Eyes;
-            Audio_listBox.ItemsSource = fileList_Audio;
+            bind();
         }
 
         private void UpItem(ListBox listBox, Config.FileList list)
@@ -115,21 +132,21 @@ namespace Lip_Sync_Generator_2
 
         private void UpButton_Click(object sender, RoutedEventArgs e)
         {
-            UpItem(main_listBox, fileList_main);
+            UpItem(body_listBox, fileCollection.Body);
         }
         private void DownButton_Click(object sender, RoutedEventArgs e)
         {
-            DownItem(main_listBox, fileList_main);
+            DownItem(body_listBox, fileCollection.Body);
         }
 
         private void UpButton_Attach1_Click(object sender, RoutedEventArgs e)
         {
-            UpItem(Eyes_listBox, fileList_Eyes);
+            UpItem(Eyes_listBox, fileCollection.Eyes);
         }
 
         private void DownButton_Attach1_Click(object sender, RoutedEventArgs e)
         {
-            DownItem(Eyes_listBox, fileList_Eyes);
+            DownItem(Eyes_listBox, fileCollection.Eyes);
         }
 
         //ドロップされたときの動作。ファイルリストに追加する。
@@ -151,7 +168,7 @@ namespace Lip_Sync_Generator_2
         }
 
         //ファイルドロップ時のカーソル変更
-        private void drop_box_DragOver(object sender, DragEventArgs e)
+        private void Drop_box_DragOver(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
@@ -164,11 +181,11 @@ namespace Lip_Sync_Generator_2
             e.Handled = true;
         }
 
-        private void main_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Main_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                MainImage.Source = new BitmapImage(new Uri(fileList_main[main_listBox.SelectedIndex].Path));
+                BodyImage.Source = new BitmapImage(new Uri(fileCollection.Body[body_listBox.SelectedIndex].Path));
             }
             catch (Exception ex)
             {
@@ -176,11 +193,11 @@ namespace Lip_Sync_Generator_2
             }
         }
 
-        private void Attach1_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Eye_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                EyeImage.Source = new BitmapImage(new Uri(fileList_Eyes[Eyes_listBox.SelectedIndex].Path));
+                EyeImage.Source = new BitmapImage(new Uri(fileCollection.Eyes[Eyes_listBox.SelectedIndex].Path));
             }
             catch (Exception ex)
             {
@@ -188,7 +205,6 @@ namespace Lip_Sync_Generator_2
             }
         }
 
-        List<float> CurrentAverageList = new List<float>();
 
         /// <summary>
         /// 音声のボリュームを解析
@@ -237,6 +253,8 @@ namespace Lip_Sync_Generator_2
             return averageList;
         }
 
+        List<float> CurrentAverageList = new List<float>();
+
         /// <summary>
         /// 
         /// </summary>
@@ -261,12 +279,19 @@ namespace Lip_Sync_Generator_2
 
         private void Audio_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            CurrentAverageList = audio_Analyze(fileList_Audio[Audio_listBox.SelectedIndex].Path);
+            if (fileCollection.Audio.Count == 0)
+                return;
+
+            CurrentAverageList = audio_Analyze(fileCollection.Audio[Audio_listBox.SelectedIndex].Path);
             DrawingChart();
         }
 
         Random random = new Random();
 
+        /// <summary>
+        /// 仮の関数、将来的に4枚以上に対応
+        /// </summary>
+        /// <param name="audio_path"></param>
         private void Create(string audio_path)
         {
             List<float> averageListCopy = audio_Analyze(audio_path);          
@@ -279,21 +304,21 @@ namespace Lip_Sync_Generator_2
             string eye_path3 = "";
             bool eye_exist = true;
 
-            pic_path1 = fileList_main[0].Path;
-            pic_path2 = fileList_main[1].Path;
-            pic_path3 = fileList_main[1].Path;
-            if (fileList_main.Count > 2)
-                pic_path3 = fileList_main[2].Path;
+            pic_path1 = fileCollection.Body[0].Path;
+            pic_path2 = fileCollection.Body[1].Path;
+            pic_path3 = fileCollection.Body[1].Path;
+            if (fileCollection.Body.Count > 2)
+                pic_path3 = fileCollection.Body[2].Path;
 
-            if (fileList_Eyes.Count == 0)
+            if (fileCollection.Eyes.Count == 0)
                 eye_exist = false;
             else
             {
-                eye_path1 = fileList_Eyes[0].Path;
-                eye_path2 = fileList_Eyes[1].Path;
-                eye_path3 = fileList_Eyes[1].Path;
-                if (fileList_Eyes.Count > 2)
-                    eye_path3 = fileList_Eyes[2].Path;
+                eye_path1 = fileCollection.Eyes[0].Path;
+                eye_path2 = fileCollection.Eyes[1].Path;
+                eye_path3 = fileCollection.Eyes[1].Path;
+                if (fileCollection.Eyes.Count > 2)
+                    eye_path3 = fileCollection.Eyes[2].Path;
             }
 
             if (pic_path3 == "")
@@ -340,7 +365,7 @@ namespace Lip_Sync_Generator_2
             Mat input_eye1 = new Mat(size, MatType.CV_8UC4);
             Mat input_eye2 = new Mat(size, MatType.CV_8UC4);
             Mat input_eye3 = new Mat(size, MatType.CV_8UC4);
-                
+
             //目のファイルが存在するなら
             if (eye_exist)
             {
@@ -348,6 +373,14 @@ namespace Lip_Sync_Generator_2
                 input_eye2 = Cv2.ImRead(eye_path2, ImreadModes.Unchanged);
                 input_eye3 = Cv2.ImRead(eye_path3, ImreadModes.Unchanged);
             }
+
+            //リサイズ
+            input_mat1 = input_mat1.Resize(size);
+            input_mat2 = input_mat2.Resize(size);
+            input_mat3 = input_mat3.Resize(size);
+            input_eye1 = input_eye1.Resize(size);
+            input_eye2 = input_eye2.Resize(size);
+            input_eye3 = input_eye3.Resize(size);
 
             //透明色を黒に変更
             MatFunction.Transparent_replacement_ToBlack(input_eye1);
@@ -450,8 +483,18 @@ namespace Lip_Sync_Generator_2
             if (!Directory.Exists(out_path))
                 Directory.CreateDirectory(out_path);
 
-            FFMpeg.ReplaceAudio(temp_mov_path, audio_path, out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4");
-            File.Delete(temp_mov_path);
+            try
+            {
+                FFMpeg.ReplaceAudio(temp_mov_path, audio_path, out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.ToString());
+            }
+            finally
+            {
+                File.Delete(temp_mov_path);
+            }
         }
 
         private async void Run()
@@ -461,12 +504,12 @@ namespace Lip_Sync_Generator_2
             var selectedItems = Audio_listBox.SelectedItems?.ToList<Config.FileName>() ?? new();
             await Task.Run(() =>
             {
-
+                bool done = true;
                 try
                 {
                     if (selectedItems.Count == 0)
                     {
-                        MessageBox.Show("ファイルが不足しています。","Error");
+                        MessageBox.Show("ファイルが不足しています。", "Error");
                         throw new Exception("Item == 0");
                     }
                     //スレッド数を8に制限
@@ -481,16 +524,26 @@ namespace Lip_Sync_Generator_2
                 }
                 catch (Exception ex)
                 {
+                    done = false;
                     Debug.WriteLine($"{ex.Message}");
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        Notice_TextBox.Text = ex.ToString();
+                    });
                 }
                 finally
                 {
                     this.Dispatcher.Invoke(() =>
                     {
-                        Notice_TextBox.Text = "";
                         Run_Button.IsEnabled = true;
                     });
                 }
+
+                if (done)
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        Notice_TextBox.Text = "DONE";
+                    });
 
             });
         }
@@ -500,16 +553,85 @@ namespace Lip_Sync_Generator_2
             Run();
         }
 
-        private void delete_main_Button_Click(object sender, RoutedEventArgs e)
+        private void Delete_main_Button_Click(object sender, RoutedEventArgs e)
         {
-            if (main_listBox.SelectedIndex >= 0)
-                fileList_main.RemoveAt(main_listBox.SelectedIndex);
+            if (body_listBox.SelectedIndex >= 0)
+                fileCollection.Body.RemoveAt(body_listBox.SelectedIndex);
+            if (body_listBox.Items.Count == 0)
+                BodyImage.Source = null;
         }
 
-        private void delete_eyes_Button_Click(object sender, RoutedEventArgs e)
+        private void Delete_eyes_Button_Click(object sender, RoutedEventArgs e)
         {
             if (Eyes_listBox.SelectedIndex >= 0)
-                fileList_Eyes.RemoveAt(Eyes_listBox.SelectedIndex);
+                fileCollection.Eyes.RemoveAt(Eyes_listBox.SelectedIndex);
+            if (Eyes_listBox.Items.Count == 0)
+                EyeImage.Source = null;
+        }
+
+        private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
+        {
+
+            var dialog = new OpenFileDialog();
+            dialog.Filter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
+
+            var result = dialog.ShowDialog() ?? false;
+
+            // 保存ボタン以外が押下された場合
+            if (!result)
+            {
+                // 終了します。
+                return;
+            }
+            string content = File.ReadAllText(dialog.FileName);
+
+            fileCollection = new Config.FileCollection();
+            bind();
+
+            fileCollection = JsonUtil.JsonToPreset(content)!;
+            bind();
+        }
+
+        /// <summary>
+        /// コレクションをコントロールにバインド
+        /// </summary>
+        void bind()
+        {
+            body_listBox.ItemsSource = fileCollection.Body;
+            Eyes_listBox.ItemsSource = fileCollection.Eyes;
+            Audio_listBox.ItemsSource = fileCollection.Audio;
+
+            if (body_listBox.Items.Count != 0)
+                body_listBox.SelectedIndex = 0;
+
+            if (Eyes_listBox.Items.Count != 0)
+                Eyes_listBox.SelectedIndex = 0;
+
+            if (Audio_listBox.Items.Count != 0)
+                Audio_listBox.SelectedIndex = 0;
+        }
+
+        private void Save_preset_Button_Click(object sender, RoutedEventArgs e)
+        {
+            //presetフォルダがなければ作成
+            if (Directory.Exists("preset") == false)
+                Directory.CreateDirectory("preset");
+
+            var str = JsonUtil.ToJson(fileCollection);
+
+            var dialog = new SaveFileDialog();
+            dialog.Filter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
+
+            var result = dialog.ShowDialog() ?? false;
+
+            // 保存ボタン以外が押下された場合
+            if (!result)
+            {
+                // 終了します。
+                return;
+            }
+
+            File.WriteAllText(dialog.FileName, str);
         }
     }
 

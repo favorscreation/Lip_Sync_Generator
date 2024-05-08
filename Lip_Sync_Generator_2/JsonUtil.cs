@@ -56,6 +56,25 @@ namespace Lip_Sync_Generator_2
             }
         }
 
+        public static Config.FileCollection? JsonToPreset(string json)
+        {
+            if (String.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+            try
+            {
+                Config.FileCollection? poco = JsonSerializer.Deserialize<Config.FileCollection>(json, GetOption());
+                return poco;
+            }
+            catch (JsonException e)
+            {
+                Debug.WriteLine(e.Message);
+                return null;
+            }
+        }
+
+
         /// <summary>
         /// オプションを設定します。内部メソッドです。
         /// </summary>
