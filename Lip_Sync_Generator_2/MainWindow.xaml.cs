@@ -24,6 +24,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Win32;
 using System.Security.Cryptography;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+using static Lip_Sync_Generator_2.Config;
 
 namespace Lip_Sync_Generator_2
 {
@@ -61,18 +63,13 @@ namespace Lip_Sync_Generator_2
             if (Directory.Exists("preset") == false)
                 Directory.CreateDirectory("preset");
 
+            //presetフォルダがなければ作成
+            if (Directory.Exists("outputs") == false)
+                Directory.CreateDirectory("outputs");
+
             if (JsonUtil.JsonToConfig(str) == null)
             {
-                config = new Config.Values
-                {
-                    framerate = 24,
-                    average_samples = 1000,
-                    sample_scale = 100,
-                    smallMouth_th = 1,
-                    bigMouth_th = 4,
-                    blink_intervalFrame = 72,
-                    blink_interval_randomFrame = 24
-                };
+                config = new Config.Values();
                 Notice_TextBox.Text = "デフォルト設定が適用されました";
                 //Debug.WriteLine(JsonUtil.ToJson(config));
 
@@ -95,6 +92,7 @@ namespace Lip_Sync_Generator_2
             TextBox5.Text = "bigMouth th = " + config!.bigMouth_th;
             TextBox6.Text = "blink interval Frame = " + config!.blink_intervalFrame;
             TextBox7.Text = "blink interval RandomFrame = " + config!.blink_interval_randomFrame;
+            TextBox8.Text = "background Color = [" + config!.background[0] + " , " + config!.background[1] + " , " + config!.background[2] + "]";
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -289,8 +287,15 @@ namespace Lip_Sync_Generator_2
             if (fileCollection.Audio.Count == 0)
                 return;
 
-            CurrentAverageList = audio_Analyze(fileCollection.Audio[Audio_listBox.SelectedIndex].Path);
-            DrawingChart();
+            try
+            {
+                CurrentAverageList = audio_Analyze(fileCollection.Audio[Audio_listBox.SelectedIndex].Path);
+                DrawingChart();
+            }
+            catch (Exception ex)
+            {
+                Notice_TextBox.Text = ex.Message;
+            }
         }
 
         Random random = new Random();
@@ -301,7 +306,7 @@ namespace Lip_Sync_Generator_2
         /// <param name="audio_path"></param>
         private void Create(string audio_path)
         {
-            List<float> averageListCopy = audio_Analyze(audio_path);          
+            List<float> averageListCopy = audio_Analyze(audio_path);
 
             string pic_path1 = "";
             string pic_path2 = "";
@@ -310,6 +315,10 @@ namespace Lip_Sync_Generator_2
             string eye_path2 = "";
             string eye_path3 = "";
             bool eye_exist = true;
+
+            var rb = config.background[0];
+            var gb = config.background[1];
+            var bb = config.background[2];
 
             pic_path1 = fileCollection.Body[0].Path;
             pic_path2 = fileCollection.Body[1].Path;
@@ -341,7 +350,7 @@ namespace Lip_Sync_Generator_2
             //tempファイル名を生成
             Guid g = System.Guid.NewGuid();
             string guid = g.ToString("N").Substring(0, 8);
-            string temp_mov_path =　"temp_" + guid + ".mp4";
+            string temp_mov_path = "temp_" + guid + ".mp4";
 
             string out_path = @"outputs/";
 
@@ -352,9 +361,9 @@ namespace Lip_Sync_Generator_2
             Mat input_mat2 = Cv2.ImRead(pic_path2, ImreadModes.Unchanged);
             Mat input_mat3 = Cv2.ImRead(pic_path3, ImreadModes.Unchanged);
             //透明ピクセルを置換
-            MatFunction.Transparent_replacement(input_mat1);
-            MatFunction.Transparent_replacement(input_mat2);
-            MatFunction.Transparent_replacement(input_mat3);
+            MatFunction.Transparent_replacement(input_mat1, (byte)rb, (byte)gb, (byte)bb);
+            MatFunction.Transparent_replacement(input_mat2, (byte)rb, (byte)gb, (byte)bb);
+            MatFunction.Transparent_replacement(input_mat3, (byte)rb, (byte)gb, (byte)bb);
             //透明度削除
             input_mat1 = input_mat1.CvtColor(ColorConversionCodes.BGRA2BGR);
             input_mat2 = input_mat2.CvtColor(ColorConversionCodes.BGRA2BGR);
@@ -414,8 +423,9 @@ namespace Lip_Sync_Generator_2
 
             int count = 0;
 
-            //背景色を青に設定 BGR
-            using (var basemat = new Mat(size, MatType.CV_8UC3, new Scalar(255, 0, 0, 0)))
+
+            //背景色を設定 BGR
+            using (var basemat = new Mat(size, MatType.CV_8UC3, new Scalar(bb, gb, rb)))
             {
 
                 for (int frame = 0; frame < averageListCopy.Count; frame++)
@@ -575,6 +585,12 @@ namespace Lip_Sync_Generator_2
                 EyeImage.Source = null;
         }
 
+        private void Delete_audio_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (Audio_listBox.SelectedIndex >= 0)
+                fileCollection.Audio.RemoveAt(Audio_listBox.SelectedIndex);
+        }
+
         private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
         {
 
@@ -638,9 +654,30 @@ namespace Lip_Sync_Generator_2
             File.WriteAllText(dialog.FileName, str);
         }
 
-        private void outputs_dir_Button_Click(object sender, RoutedEventArgs e)
+        private void Outputs_dir_Button_Click(object sender, RoutedEventArgs e)
         {
             System.Diagnostics.Process.Start("explorer.exe", CurrentDir + "\\outputs");
+        }
+
+        WaveOutEvent outputDevice = new WaveOutEvent();
+        private void Play_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (fileCollection.Audio.Count == 0)
+                return;
+
+            if (outputDevice.PlaybackState == PlaybackState.Playing)
+            {
+                outputDevice.Stop();
+                return;
+            }
+
+
+            var filename = fileCollection.Audio[Audio_listBox.SelectedIndex].Path;
+
+            //オーディオ再生
+            AudioFileReader afr = new AudioFileReader(filename);
+            outputDevice.Init(afr);
+            outputDevice.Play();
         }
     }
 
