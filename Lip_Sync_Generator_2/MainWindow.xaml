@@ -43,63 +43,69 @@
                 <MenuItem Header="MENU" Height="25" FontSize="14" FontWeight="Bold">
                     <MenuItem x:Name="read_preset_Button" Header="プリセット読み込み" Click="Load_preset_Button_Click"/>
                     <MenuItem x:Name="save_preset_Button" Header="プリセット保存" Click="Save_preset_Button_Click"/>
-                    <MenuItem x:Name="outputs_dir_Button" Header="保存フォルダを開く" Click="outputs_dir_Button_Click"/>
+                    <MenuItem x:Name="outputs_dir_Button" Header="保存フォルダを開く" Click="Outputs_dir_Button_Click"/>
                 </MenuItem>
             </Menu>
         </StackPanel>
 
 
-        <ListBox x:Name="body_listBox" d:ItemsSource="{Binding}" Margin="515,51,0,0" HorizontalAlignment="Left" Width="200" Height="114" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Body_listBox_SelectionChanged">
+        <ListBox x:Name="body_listBox" d:ItemsSource="{Binding}" Margin="515,51,0,0" HorizontalAlignment="Left" Width="200" Height="90" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Body_listBox_SelectionChanged">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Name}"/>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <Button x:Name="UpButton_main" Template="{StaticResource buttonTemplate}" Content="↑" HorizontalAlignment="Left" Margin="609,170,0,0" VerticalAlignment="Top" Width="50" Click="UpButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="DownButton_main" Template="{StaticResource buttonTemplate}" Content="↓" HorizontalAlignment="Left" Margin="665,170,0,0" VerticalAlignment="Top" Width="50" Click="DownButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
-        <ListBox x:Name="Eyes_listBox" d:ItemsSource="{Binding}" Margin="515,214,0,0" HorizontalAlignment="Left" Width="200" Height="114" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Eye_listBox_SelectionChanged">
+        <Button x:Name="UpButton_main" Template="{StaticResource buttonTemplate}" Content="↑" HorizontalAlignment="Left" Margin="611,146,0,0" VerticalAlignment="Top" Width="50" Click="UpButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
+        <Button x:Name="DownButton_main" Template="{StaticResource buttonTemplate}" Content="↓" HorizontalAlignment="Left" Margin="667,146,0,0" VerticalAlignment="Top" Width="50" Click="DownButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
+        <ListBox x:Name="Eyes_listBox" d:ItemsSource="{Binding}" Margin="517,190,0,0" HorizontalAlignment="Left" Width="200" Height="90" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Eye_listBox_SelectionChanged">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Name}"/>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <Button x:Name="UpButton_eye" Template="{StaticResource buttonTemplate}" Content="↑" HorizontalAlignment="Left" Margin="611,333,0,0" VerticalAlignment="Top" Width="50" Click="UpButton_Attach1_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="DownButton_eye" Template="{StaticResource buttonTemplate}" Content="↓" HorizontalAlignment="Left" Margin="665,333,0,0" VerticalAlignment="Top" Width="50" Click="DownButton_Attach1_Click" RenderTransformOrigin="0.5,0.5" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"></Button>
+        <Button x:Name="UpButton_eye" Template="{StaticResource buttonTemplate}" Content="↑" HorizontalAlignment="Left" Margin="613,285,0,0" VerticalAlignment="Top" Width="50" Click="UpButton_Attach1_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
+        <Button x:Name="DownButton_eye" Template="{StaticResource buttonTemplate}" Content="↓" HorizontalAlignment="Left" Margin="667,285,0,0" VerticalAlignment="Top" Width="50" Click="DownButton_Attach1_Click" RenderTransformOrigin="0.5,0.5" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"></Button>
         <Border BorderBrush="Black" Width="500" Height="500" BorderThickness="1,1,1,1" Margin="10,51,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Background="White">
             <Grid>
                 <Image x:Name="BodyImage" Source="{Binding}"/>
                 <Image x:Name="EyeImage" Source="{Binding}"/>
             </Grid>
         </Border>
-        <TextBlock HorizontalAlignment="Left" Margin="515,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Language="ja-jp" Text="Body"/></TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="517,193,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Language="ja-jp" Text="Eyes"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="515,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Text="Body"/><Run Language="ja-jp" Text="(PNG)"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="519,169,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Text="Eyes"/><Run Language="ja-jp" Text="(PNG)"/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="10,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Language="ja-jp" Text="Preview"/></TextBlock>
-        <ListBox x:Name="Audio_listBox" d:ItemsSource="{Binding}" Margin="515,377,0,0" HorizontalAlignment="Left" Width="200" Height="174" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Audio_listBox_SelectionChanged" SelectionMode="Extended">
+        <ListBox x:Name="Audio_listBox" d:ItemsSource="{Binding}" Margin="517,329,0,0" HorizontalAlignment="Left" Width="200" Height="199" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Audio_listBox_SelectionChanged" SelectionMode="Extended">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding Name}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Name}" />
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <TextBlock HorizontalAlignment="Left" Margin="515,356,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Language="ja-jp" Text="Audio"/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="517,308,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363" RenderTransformOrigin="0.634,-1.689" Text="Audio"/>
         <Border BorderBrush="Black" BorderThickness="1" HorizontalAlignment="Left" Margin="10,556,0,41" Width="705" >
             <lvc:CartesianChart x:Name="audioChart" Hoverable="False" Background="White"  />
         </Border>
         <Button x:Name="Run_Button" Template="{StaticResource buttonTemplate}" Content="RUN" Margin="723,0,10,41" Height="63" VerticalAlignment="Bottom" Click="Run_Button_Click" Foreground="White" FontSize="20"/>
         <TextBox x:Name="Notice_TextBox"  Margin="10,0,10,10" TextWrapping="Wrap" Text="TextBox" Height="18" VerticalAlignment="Bottom"/>
-        <Button x:Name="delete_main_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="515,170,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_main_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="delete_eyes_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="515,333,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_eyes_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <Grid Margin="723,0,0,116" Height="162" VerticalAlignment="Bottom">
-            <TextBlock x:Name="TextBox1" HorizontalAlignment="Left" Margin="10,12,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-            <TextBlock x:Name="TextBox2" HorizontalAlignment="Left" Margin="10,33,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-            <TextBlock x:Name="TextBox3" HorizontalAlignment="Left" Margin="10,54,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-            <TextBlock x:Name="TextBox4" HorizontalAlignment="Left" Margin="10,75,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-            <TextBlock x:Name="TextBox5" HorizontalAlignment="Left" Margin="10,94,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-            <TextBlock x:Name="TextBox6" HorizontalAlignment="Left" Margin="10,115,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-            <TextBlock x:Name="TextBox7" HorizontalAlignment="Left" Margin="10,136,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+        <Button x:Name="delete_main_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="517,146,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_main_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+        <Button x:Name="delete_eyes_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="517,285,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_eyes_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+        <Grid Margin="723,0,0,116" Height="184" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="277">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="TextBox1" HorizontalAlignment="Center" Margin="0,12,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox2" HorizontalAlignment="Center" Margin="0,33,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox3" HorizontalAlignment="Center" Margin="0,54,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox4" HorizontalAlignment="Center" Margin="0,75,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox5" HorizontalAlignment="Center" Margin="0,94,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox6" HorizontalAlignment="Center" Margin="0,115,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox7" HorizontalAlignment="Center" Margin="0,136,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox8" HorizontalAlignment="Center" Margin="0,157,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
         </Grid>
+        <Button x:Name="delete_audio_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="519,533,0,0" VerticalAlignment="Top" Width="88" FontFamily="Arial" Click="Delete_audio_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+        <Button x:Name="Play_Button" Template="{StaticResource buttonTemplate}" Content="Play / Stop" HorizontalAlignment="Left" Margin="612,533,0,0" VerticalAlignment="Top" Width="104" FontFamily="Arial" Click="Play_Button_Click" Height="18" Foreground="White" FontSize="14"/>
 
     </Grid>
 </Window>

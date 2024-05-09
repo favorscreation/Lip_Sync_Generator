@@ -33,6 +33,21 @@ namespace Lip_Sync_Generator_2
 
             [JsonPropertyName("blink intervalRandomFrame")]
             public int blink_interval_randomFrame { get; set; }
+
+            [JsonPropertyName("BG_Color")]
+            public int[] background { get; set; }
+
+            public Values() : base()
+            {
+                framerate = 24;
+                average_samples = 1000;
+                sample_scale = 100;
+                smallMouth_th = 1;
+                bigMouth_th = 4;
+                blink_intervalFrame = 72;
+                blink_interval_randomFrame = 24;
+                background = [0, 0, 255];
+            }
         }
 
         public class FileCollection

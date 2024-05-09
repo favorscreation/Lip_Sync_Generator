@@ -10,10 +10,10 @@ namespace Lip_Sync_Generator_2
     internal class MatFunction
     {
         /// <summary>
-        ///         //透明ピクセルを青に置換
+        ///         //透明ピクセルを置換
         /// </summary>
         /// <param name="mat"></param>
-        static public void Transparent_replacement(Mat mat)
+        static public void Transparent_replacement(Mat mat, byte R, byte G, byte B)
         {
             //ポインタによるアクセス
             unsafe
@@ -25,9 +25,9 @@ namespace Lip_Sync_Generator_2
                     {
                         if (b[3] == 0)
                         {
-                            b[0] = 255; //B
-                            b[1] = 0;   //G
-                            b[2] = 0;   //R
+                            b[0] = B; //B
+                            b[1] = G;   //G
+                            b[2] = R;   //R
                             b[3] = 255; //A
                         }
                         b = b + 4;
