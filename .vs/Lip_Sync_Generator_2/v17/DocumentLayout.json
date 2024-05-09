@@ -11,16 +11,12 @@
       "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|c:\\users\\forti\\onedrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\github\\lip_sync_generator\\lip_sync_generator_2\\jsonutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\jsonutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|c:\\users\\forti\\onedrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\github\\lip_sync_generator\\lip_sync_generator_2\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|c:\\users\\forti\\onedrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\github\\lip_sync_generator\\lip_sync_generator_2\\config.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\config.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|c:\\users\\forti\\onedrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\github\\lip_sync_generator\\lip_sync_generator_2\\jsonutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\jsonutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,7 +26,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
@@ -41,20 +37,7 @@
               "ToolTip": "C:\\Users\\forti\\OneDrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\MainWindow.xaml",
               "RelativeToolTip": "Lip_Sync_Generator_2\\MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-04-30T02:21:02.465Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "App.xaml",
-              "DocumentMoniker": "C:\\Users\\forti\\OneDrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\App.xaml",
-              "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\App.xaml",
-              "ToolTip": "C:\\Users\\forti\\OneDrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\App.xaml",
-              "RelativeToolTip": "Lip_Sync_Generator_2\\App.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-05-08T06:23:41.979Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-04-30T02:21:02.465Z"
             },
             {
               "$type": "Document",
@@ -64,14 +47,14 @@
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\forti\\OneDrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\MainWindow.xaml.cs",
               "RelativeToolTip": "Lip_Sync_Generator_2\\MainWindow.xaml.cs",
-              "ViewState": "AQIAAPoBAAAAAAAAAAAUwCQCAAAJAAAA",
+              "ViewState": "AQIAAAkAAAAAAAAAAAAAAHACAAAuAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-04-30T02:21:05.729Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 2,
               "Title": "Config.cs",
               "DocumentMoniker": "C:\\Users\\forti\\OneDrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\Config.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\Config.cs",
@@ -83,7 +66,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "JsonUtil.cs",
               "DocumentMoniker": "C:\\Users\\forti\\OneDrive\\\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\JsonUtil.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\JsonUtil.cs",
@@ -91,8 +74,7 @@
               "RelativeToolTip": "Lip_Sync_Generator_2\\JsonUtil.cs",
               "ViewState": "AQIAACoAAAAAAAAAAAAAADgAAAAJAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-04-30T04:43:09.834Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-04-30T04:43:09.834Z"
             }
           ]
         }

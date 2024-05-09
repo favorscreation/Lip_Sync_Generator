@@ -36,19 +36,20 @@
 
     <Grid>
         <Grid.Background>
-            <ImageBrush Opacity="0.12" Stretch="UniformToFill" TileMode="Tile" ImageSource="/MetalPlates006_2K-PNG_Color.jpeg"/>
+            <ImageBrush Opacity="0.12" Stretch="UniformToFill" TileMode="Tile" ImageSource="pack://application:,,,/Resources/MetalPlates006_2K-PNG_Color.jpeg"/>
         </Grid.Background>
         <StackPanel Height="26" VerticalAlignment="Top">
             <Menu Background="{x:Null}" Height="25">
-                <MenuItem Header="MENU" Height="25" Background="White">
+                <MenuItem Header="MENU" Height="25" FontSize="14" FontWeight="Bold">
                     <MenuItem x:Name="read_preset_Button" Header="プリセット読み込み" Click="Load_preset_Button_Click"/>
                     <MenuItem x:Name="save_preset_Button" Header="プリセット保存" Click="Save_preset_Button_Click"/>
+                    <MenuItem x:Name="outputs_dir_Button" Header="保存フォルダを開く" Click="outputs_dir_Button_Click"/>
                 </MenuItem>
             </Menu>
         </StackPanel>
 
 
-        <ListBox x:Name="body_listBox" d:ItemsSource="{Binding}" Margin="515,51,0,0" HorizontalAlignment="Left" Width="200" Height="114" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Main_listBox_SelectionChanged">
+        <ListBox x:Name="body_listBox" d:ItemsSource="{Binding}" Margin="515,51,0,0" HorizontalAlignment="Left" Width="200" Height="114" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Body_listBox_SelectionChanged">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Name}"/>

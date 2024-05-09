@@ -59,15 +59,5 @@ namespace Lip_Sync_Generator_2.Properties {
                 resourceCulture = value;
             }
         }
-        
-        /// <summary>
-        ///   型 System.Drawing.Bitmap のローカライズされたリソースを検索します。
-        /// </summary>
-        internal static System.Drawing.Bitmap MetalPlates006_2K_PNG_Color {
-            get {
-                object obj = ResourceManager.GetObject("MetalPlates006_2K_PNG_Color", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
     }
 }
