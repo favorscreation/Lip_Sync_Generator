@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <None Remove="MetalPlates006_2K-PNG_Color.jpeg" />
+    <None Remove="Resources\MetalPlates006_2K-PNG_Color.jpeg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="MetalPlates006_2K-PNG_Color.jpeg" />
+    <Resource Include="Resources\MetalPlates006_2K-PNG_Color.jpeg" />
   </ItemGroup>
 
   <ItemGroup>

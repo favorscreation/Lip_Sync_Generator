@@ -32,6 +32,7 @@ namespace Lip_Sync_Generator_2
     /// </summary>
     public partial class MainWindow : Window
     {
+        string CurrentDir = System.IO.Directory.GetCurrentDirectory();
         Config.Values config = new Config.Values();
         public Config.FileCollection fileCollection = new Config.FileCollection();
 
@@ -55,6 +56,10 @@ namespace Lip_Sync_Generator_2
             //configフォルダがなければ作成
             if (Directory.Exists("config") == false)
                 Directory.CreateDirectory("config");
+
+            //presetフォルダがなければ作成
+            if (Directory.Exists("preset") == false)
+                Directory.CreateDirectory("preset");
 
             if (JsonUtil.JsonToConfig(str) == null)
             {
@@ -181,11 +186,12 @@ namespace Lip_Sync_Generator_2
             e.Handled = true;
         }
 
-        private void Main_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Body_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                BodyImage.Source = new BitmapImage(new Uri(fileCollection.Body[body_listBox.SelectedIndex].Path));
+                if (body_listBox.SelectedIndex != -1)
+                    BodyImage.Source = new BitmapImage(new Uri(fileCollection.Body[body_listBox.SelectedIndex].Path));
             }
             catch (Exception ex)
             {
@@ -197,7 +203,8 @@ namespace Lip_Sync_Generator_2
         {
             try
             {
-                EyeImage.Source = new BitmapImage(new Uri(fileCollection.Eyes[Eyes_listBox.SelectedIndex].Path));
+                if (Eyes_listBox.SelectedIndex != -1)
+                    EyeImage.Source = new BitmapImage(new Uri(fileCollection.Eyes[Eyes_listBox.SelectedIndex].Path));
             }
             catch (Exception ex)
             {
@@ -413,8 +420,7 @@ namespace Lip_Sync_Generator_2
 
                 for (int frame = 0; frame < averageListCopy.Count; frame++)
                 {
-                    //Debug.WriteLine("frame:" + frame);
-
+                    //進捗表示
                     if (frame % 10 == 0)
                         this.Dispatcher.Invoke(() =>
                         {
@@ -574,6 +580,7 @@ namespace Lip_Sync_Generator_2
 
             var dialog = new OpenFileDialog();
             dialog.Filter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
+            dialog.InitialDirectory = CurrentDir + "\\preset";
 
             var result = dialog.ShowDialog() ?? false;
 
@@ -613,14 +620,11 @@ namespace Lip_Sync_Generator_2
 
         private void Save_preset_Button_Click(object sender, RoutedEventArgs e)
         {
-            //presetフォルダがなければ作成
-            if (Directory.Exists("preset") == false)
-                Directory.CreateDirectory("preset");
-
             var str = JsonUtil.ToJson(fileCollection);
 
             var dialog = new SaveFileDialog();
             dialog.Filter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
+            dialog.InitialDirectory = CurrentDir + "\\preset";
 
             var result = dialog.ShowDialog() ?? false;
 
@@ -632,6 +636,11 @@ namespace Lip_Sync_Generator_2
             }
 
             File.WriteAllText(dialog.FileName, str);
+        }
+
+        private void outputs_dir_Button_Click(object sender, RoutedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("explorer.exe", CurrentDir + "\\outputs");
         }
     }
 
