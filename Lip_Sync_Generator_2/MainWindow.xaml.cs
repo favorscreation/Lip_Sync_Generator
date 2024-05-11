@@ -26,6 +26,7 @@ using Microsoft.Win32;
 using System.Security.Cryptography;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using static Lip_Sync_Generator_2.Config;
+using System.Drawing;
 
 namespace Lip_Sync_Generator_2
 {
@@ -34,16 +35,18 @@ namespace Lip_Sync_Generator_2
     /// </summary>
     public partial class MainWindow : Window
     {
-        string CurrentDir = System.IO.Directory.GetCurrentDirectory();
+        static string CurrentDir = System.IO.Directory.GetCurrentDirectory();
         Config.Values config = new Config.Values();
         public Config.FileCollection fileCollection = new Config.FileCollection();
+
+        string ffmpegDir = CurrentDir + "\\ffmpeg";
 
         public MainWindow()
         {
             InitializeComponent();
 
             //ffmpegのパスを通す
-            GlobalFFOptions.Configure(options => options.BinaryFolder = "./ffmpeg");
+            GlobalFFOptions.Configure(options => options.BinaryFolder = ffmpegDir);
 
             Encoding enc = Encoding.GetEncoding("utf-8");
 
@@ -93,6 +96,8 @@ namespace Lip_Sync_Generator_2
             TextBox6.Text = "blink interval Frame = " + config!.blink_intervalFrame;
             TextBox7.Text = "blink interval RandomFrame = " + config!.blink_interval_randomFrame;
             TextBox8.Text = "background Color = [" + config!.background[0] + " , " + config!.background[1] + " , " + config!.background[2] + "]";
+            TextBox9.Text = "similarity = " + config.similarity;
+            TextBox10.Text = "blend = " + config.blend;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -161,8 +166,6 @@ namespace Lip_Sync_Generator_2
                 var fileNames = (string[])e.Data.GetData(DataFormats.FileDrop);
                 foreach (var name in fileNames)
                 {
-                    Debug.WriteLine(name);
-
                     var itemlist = (Config.FileList)((ListBox)sender).ItemsSource;
                     itemlist.Add(new Config.FileName(Path.GetFileName(name), name));
                 }
@@ -408,7 +411,7 @@ namespace Lip_Sync_Generator_2
             input_eye3 = input_eye3.CvtColor(ColorConversionCodes.BGRA2BGR);
 
 
-            VideoWriter vw = new VideoWriter(temp_mov_path, FourCC.MP4V, config!.framerate, size);
+            VideoWriter vw = new VideoWriter(temp_mov_path, FourCC.MPG4, config!.framerate, size);
 
 
             //目のまばたき乱数を生成
@@ -501,7 +504,10 @@ namespace Lip_Sync_Generator_2
 
             try
             {
-                FFMpeg.ReplaceAudio(temp_mov_path, audio_path, out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4");
+                string output_path = out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4";
+                FFMpeg.ReplaceAudio(temp_mov_path, audio_path, output_path);
+    
+                convert2Transparent(output_path);
             }
             catch (Exception ex)
             {
@@ -511,6 +517,39 @@ namespace Lip_Sync_Generator_2
             {
                 File.Delete(temp_mov_path);
             }
+        }
+
+        bool AlphaVideo = false;
+        /// <summary>
+        /// 透過動画に変換
+        /// </summary>
+        /// <param name="input_movie"></param>
+        private void convert2Transparent(string input_movie)
+        {
+            if (AlphaVideo)
+                try
+                {
+                    using (Process process = new Process())
+                    {
+                        string outPath = CurrentDir + @"\outputs\" + Path.GetFileNameWithoutExtension(input_movie) + ".mov";
+                        process.StartInfo.FileName = ffmpegDir + "\\ffmpeg.exe";
+                        string bgColor = config.background[0].ToString("x2") + config.background[1].ToString("x2") + config.background[2].ToString("x2");
+
+                        //-y 上書き
+                        process.StartInfo.Arguments = $@"-y -i {input_movie} -vf colorkey={bgColor}:{config.similarity}:{config.blend} -pix_fmt argb -c:v qtrle {outPath}";
+                        process.Start();
+
+                        // コマンド終了まで待機
+                        process.WaitForExit();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.ToString());
+                }
+                finally
+                {
+                }
         }
 
         private async void Run()
@@ -534,7 +573,6 @@ namespace Lip_Sync_Generator_2
 
                     Parallel.ForEach(selectedItems, option, p =>
                     {
-                        Debug.WriteLine(p.Path);
                         Create(p.Path);
                     });
                 }
@@ -678,6 +716,17 @@ namespace Lip_Sync_Generator_2
             AudioFileReader afr = new AudioFileReader(filename);
             outputDevice.Init(afr);
             outputDevice.Play();
+        }
+
+
+        private void AlphaVideo_CheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            AlphaVideo = false;
+        }
+
+        private void AlphaVideo_CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            AlphaVideo = true;
         }
     }
 

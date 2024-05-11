@@ -91,7 +91,7 @@
         <TextBox x:Name="Notice_TextBox"  Margin="10,0,10,10" TextWrapping="Wrap" Text="TextBox" Height="18" VerticalAlignment="Bottom"/>
         <Button x:Name="delete_main_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="517,146,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_main_Button_Click" Height="18" Foreground="White" FontSize="14"/>
         <Button x:Name="delete_eyes_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="517,285,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_eyes_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <Grid Margin="723,0,0,116" Height="184" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="277">
+        <Grid Margin="723,38,0,0" HorizontalAlignment="Left" Width="277" Height="239" VerticalAlignment="Top">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
@@ -103,9 +103,12 @@
             <TextBlock x:Name="TextBox6" HorizontalAlignment="Center" Margin="0,115,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
             <TextBlock x:Name="TextBox7" HorizontalAlignment="Center" Margin="0,136,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
             <TextBlock x:Name="TextBox8" HorizontalAlignment="Center" Margin="0,157,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox9" HorizontalAlignment="Center" Margin="0,178,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
+            <TextBlock x:Name="TextBox10" HorizontalAlignment="Center" Margin="0,199,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
         </Grid>
         <Button x:Name="delete_audio_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="519,533,0,0" VerticalAlignment="Top" Width="88" FontFamily="Arial" Click="Delete_audio_Button_Click" Height="18" Foreground="White" FontSize="14"/>
         <Button x:Name="Play_Button" Template="{StaticResource buttonTemplate}" Content="Play / Stop" HorizontalAlignment="Left" Margin="612,533,0,0" VerticalAlignment="Top" Width="104" FontFamily="Arial" Click="Play_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+        <CheckBox x:Name="AlphaVideo_CheckBox" Content="透過動画も出力する（ファイルサイズ大）" Margin="723,0,0,116" RenderTransformOrigin="-1.099,0.268" FontSize="14" HorizontalAlignment="Left" Width="267" Height="18" VerticalAlignment="Bottom" IsChecked="False" Unchecked="AlphaVideo_CheckBox_Unchecked" Checked="AlphaVideo_CheckBox_Checked"/>
 
     </Grid>
 </Window>
