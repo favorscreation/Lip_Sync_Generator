@@ -37,6 +37,12 @@ namespace Lip_Sync_Generator_2
             [JsonPropertyName("BG_Color")]
             public int[] background { get; set; }
 
+            [JsonPropertyName("similarity")]
+            public float similarity { get; set; }
+
+            [JsonPropertyName("blend")]
+            public float blend { get; set; }
+
             public Values() : base()
             {
                 framerate = 24;
@@ -47,6 +53,8 @@ namespace Lip_Sync_Generator_2
                 blink_intervalFrame = 72;
                 blink_interval_randomFrame = 24;
                 background = [0, 0, 255];
+                similarity = 0.1f;
+                blend = 0.5f;
             }
         }
 
