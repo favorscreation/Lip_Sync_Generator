@@ -25,7 +25,7 @@ namespace Lip_Sync_Generator_2
                     {
                         if (b[3] == 0)
                         {
-                            b[0] = B; //B
+                            b[0] = B;   //B
                             b[1] = G;   //G
                             b[2] = R;   //R
                             b[3] = 255; //A

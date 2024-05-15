@@ -27,6 +27,9 @@ using System.Security.Cryptography;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using static Lip_Sync_Generator_2.Config;
 using System.Drawing;
+using System.Diagnostics.Metrics;
+using System.Security.Policy;
+using System.Windows.Media.Media3D;
 
 namespace Lip_Sync_Generator_2
 {
@@ -91,13 +94,14 @@ namespace Lip_Sync_Generator_2
             TextBox1.Text = "frameRate = " + config!.framerate;
             TextBox2.Text = "average samples = " + config!.average_samples;
             TextBox3.Text = "sample scale = " + config!.sample_scale;
-            TextBox4.Text = "smallMouth th = " + config!.smallMouth_th;
-            TextBox5.Text = "bigMouth th = " + config!.bigMouth_th;
-            TextBox6.Text = "blink interval Frame = " + config!.blink_intervalFrame;
-            TextBox7.Text = "blink interval RandomFrame = " + config!.blink_interval_randomFrame;
-            TextBox8.Text = "background Color = [" + config!.background[0] + " , " + config!.background[1] + " , " + config!.background[2] + "]";
-            TextBox9.Text = "similarity = " + config.similarity;
-            TextBox10.Text = "blend = " + config.blend;
+            TextBox4.Text = "lipSync threshold = " + config!.lipSync_threshold;
+            TextBox5.Text = "blink interval Frame = " + config!.blink_intervalFrame;
+            TextBox6.Text = "blink interval RandomFrame = " + config!.blink_interval_randomFrame;
+            TextBox7.Text = "background Color = [" + config!.background[0] + " , " + config!.background[1] + " , " + config!.background[2] + "]";
+            TextBox8.Text = "similarity = " + config.similarity;
+            TextBox9.Text = "blend = " + config.blend;
+
+            LipSync_th_Slider.Value = config!.lipSync_threshold;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -254,7 +258,7 @@ namespace Lip_Sync_Generator_2
                     //絶対値化
                     sum += Math.Abs(samples[i + j]);
                 }
-                averageList.Add(sum / (float)config.average_samples);
+                averageList.Add(sum / (float)config.average_samples * config.sample_scale);
             }
 
 
@@ -275,7 +279,7 @@ namespace Lip_Sync_Generator_2
             audioChart.AxisX[0].MinValue = 0;
 
             //データ作成
-            double[] ys1 = Enumerable.Range(0, CurrentAverageList.Count).Select(i => (double)CurrentAverageList[i] * config!.sample_scale).ToArray();
+            double[] ys1 = Enumerable.Range(0, CurrentAverageList.Count).Select(i => (double)CurrentAverageList[i]).ToArray();
 
             LineSeries lineSeries = new LineSeries();
             lineSeries.PointGeometry = null;
@@ -303,116 +307,54 @@ namespace Lip_Sync_Generator_2
 
         Random random = new Random();
 
-        /// <summary>
-        /// 仮の関数、将来的に4枚以上に対応
-        /// </summary>
-        /// <param name="audio_path"></param>
-        private void Create(string audio_path)
+        private void newCreate(string audio_path, FileCollection fileCollection)
         {
-            List<float> averageListCopy = audio_Analyze(audio_path);
-
-            string pic_path1 = "";
-            string pic_path2 = "";
-            string pic_path3 = "";
-            string eye_path1 = "";
-            string eye_path2 = "";
-            string eye_path3 = "";
+            //目存在フラグ
             bool eye_exist = true;
-
-            var rb = config.background[0];
-            var gb = config.background[1];
-            var bb = config.background[2];
-
-            pic_path1 = fileCollection.Body[0].Path;
-            pic_path2 = fileCollection.Body[1].Path;
-            pic_path3 = fileCollection.Body[1].Path;
-            if (fileCollection.Body.Count > 2)
-                pic_path3 = fileCollection.Body[2].Path;
-
             if (fileCollection.Eyes.Count == 0)
                 eye_exist = false;
-            else
-            {
-                eye_path1 = fileCollection.Eyes[0].Path;
-                eye_path2 = fileCollection.Eyes[1].Path;
-                eye_path3 = fileCollection.Eyes[1].Path;
-                if (fileCollection.Eyes.Count > 2)
-                    eye_path3 = fileCollection.Eyes[2].Path;
-            }
-
-            if (pic_path3 == "")
-            {
-                pic_path3 = pic_path2;
-            }
-            if (eye_path3 == "")
-            {
-                eye_path3 = eye_path2;
-            }
-
 
             //tempファイル名を生成
             Guid g = System.Guid.NewGuid();
             string guid = g.ToString("N").Substring(0, 8);
             string temp_mov_path = "temp_" + guid + ".mp4";
-
             string out_path = @"outputs/";
 
+            List<float> averageListCopy = audio_Analyze(audio_path);
 
-            ///メイン画像
-            //アルファチャンネル込みで読み込む
-            Mat input_mat1 = Cv2.ImRead(pic_path1, ImreadModes.Unchanged);
-            Mat input_mat2 = Cv2.ImRead(pic_path2, ImreadModes.Unchanged);
-            Mat input_mat3 = Cv2.ImRead(pic_path3, ImreadModes.Unchanged);
-            //透明ピクセルを置換
-            MatFunction.Transparent_replacement(input_mat1, (byte)rb, (byte)gb, (byte)bb);
-            MatFunction.Transparent_replacement(input_mat2, (byte)rb, (byte)gb, (byte)bb);
-            MatFunction.Transparent_replacement(input_mat3, (byte)rb, (byte)gb, (byte)bb);
-            //透明度削除
-            input_mat1 = input_mat1.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_mat2 = input_mat2.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_mat3 = input_mat3.CvtColor(ColorConversionCodes.BGRA2BGR);
+            List<Mat> inputs_Mat_body = new List<Mat>();
 
+            List<Mat> inputs_Mat_eyes = new List<Mat>();
 
-            //サイズが異なると合成できないため揃える
-            int hight = input_mat1.Height;
-            int width = input_mat1.Width;
-            OpenCvSharp.Size size = new OpenCvSharp.Size(width, hight);
+            OpenCvSharp.Size size = new OpenCvSharp.Size();
+            bool CheckSize = false;
 
+            //バックグラウンドカラー
+            var rb = config.background[0];
+            var gb = config.background[1];
+            var bb = config.background[2];
 
-            ///目の画像
-            //空の画像を生成
-            Mat input_eye1 = new Mat(size, MatType.CV_8UC4);
-            Mat input_eye2 = new Mat(size, MatType.CV_8UC4);
-            Mat input_eye3 = new Mat(size, MatType.CV_8UC4);
-
-            //目のファイルが存在するなら
-            if (eye_exist)
+            //body画像を取得
+            foreach (var item in fileCollection.Body)
             {
-                input_eye1 = Cv2.ImRead(eye_path1, ImreadModes.Unchanged);
-                input_eye2 = Cv2.ImRead(eye_path2, ImreadModes.Unchanged);
-                input_eye3 = Cv2.ImRead(eye_path3, ImreadModes.Unchanged);
+                //透明度込みで読み込む
+                var mat = Cv2.ImRead(item.Path, ImreadModes.Unchanged);
+                inputs_Mat_body.Add(mat);
+
+                //bodyの最初の1枚を基準サイズとする
+                if (CheckSize == false)
+                {
+                    size = new OpenCvSharp.Size(inputs_Mat_body[0].Width, inputs_Mat_body[0].Height);
+                }
+                CheckSize = true;
             }
 
-            //リサイズ
-            input_mat1 = input_mat1.Resize(size);
-            input_mat2 = input_mat2.Resize(size);
-            input_mat3 = input_mat3.Resize(size);
-            input_eye1 = input_eye1.Resize(size);
-            input_eye2 = input_eye2.Resize(size);
-            input_eye3 = input_eye3.Resize(size);
-
-            //透明色を黒に変更
-            MatFunction.Transparent_replacement_ToBlack(input_eye1);
-            MatFunction.Transparent_replacement_ToBlack(input_eye2);
-            MatFunction.Transparent_replacement_ToBlack(input_eye3);
-            //透明度削除
-            input_eye1 = input_eye1.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_eye2 = input_eye2.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_eye3 = input_eye3.CvtColor(ColorConversionCodes.BGRA2BGR);
-
-
-            VideoWriter vw = new VideoWriter(temp_mov_path, FourCC.MPG4, config!.framerate, size);
-
+            //目画像を取得
+            foreach (var item in fileCollection.Eyes)
+            {
+                //透明度込みで読み込む
+                inputs_Mat_eyes.Add(Cv2.ImRead(item.Path, ImreadModes.Unchanged));
+            }
 
             //目のまばたき乱数を生成
             List<int> reserveFrame = new List<int>();
@@ -424,15 +366,30 @@ namespace Lip_Sync_Generator_2
                 }
             }
 
-            int count = 0;
-
-
-            //背景色を設定 BGR
-            using (var basemat = new Mat(size, MatType.CV_8UC3, new Scalar(bb, gb, rb)))
+            //口パク目パチ処理
+            using (var vw = new VideoWriter(temp_mov_path, FourCC.H264, config!.framerate, size))
+            using (var basemat = new Mat(size, MatType.CV_8UC4, new Scalar(bb, gb, rb, 255)))
             {
+
+                //分割数
+                int divide = inputs_Mat_body.Count;
+                //基準ステップ
+                float step = averageListCopy.Max() / divide / config.lipSync_threshold + 0.0001f;
+
+                Debug.WriteLine(step);
+
+                int blinkframe_count = 0;
 
                 for (int frame = 0; frame < averageListCopy.Count; frame++)
                 {
+
+                    //音量によって表示画像を切り替える
+                    int dispNum = ((int)(averageListCopy[frame] / step));
+                    if (dispNum >= divide)
+                        dispNum = divide - 1;
+
+                    //Debug.WriteLine(dispNum);
+
                     //進捗表示
                     if (frame % 10 == 0)
                         this.Dispatcher.Invoke(() =>
@@ -440,48 +397,55 @@ namespace Lip_Sync_Generator_2
                             Notice_TextBox.Text = ((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
                         });
 
+                    if (frame % 1000 == 0)
+                        GC.Collect();
 
                     using (var output_mat = basemat.Clone())
                     {
-
-                        float sens = averageListCopy[frame] * config.sample_scale;
-
-                        if (sens >= config.bigMouth_th)
+                        //アルファチャンネルをマスクとし、outputMatにコピーする
+                        //メモリリーク原因となるのでExtractChannelもusing
+                        using (var bodyMask = inputs_Mat_body[dispNum].ExtractChannel(3))
                         {
-                            input_mat3.CopyTo(output_mat);   //大きい口
-                        }
-                        else if (sens > config.smallMouth_th && sens < config.bigMouth_th)
-                        {
-                            input_mat2.CopyTo(output_mat);  //中くらいの口
-                        }
-                        else
-                        {
-                            input_mat1.CopyTo(output_mat);   //閉じた口
+                            inputs_Mat_body[dispNum].CopyTo(output_mat, bodyMask);
                         }
 
-                        //目を合成
-                        if (count < reserveFrame.Count) //配列の範囲外にならないようチェック
-                        {
-
-                            if (frame == reserveFrame[count] + 1)
-                                input_eye2.CopyTo(output_mat, input_eye2);
-
-                            else if (frame == reserveFrame[count] + 2)
-                                input_eye3.CopyTo(output_mat, input_eye3);
-
-                            else if (frame == reserveFrame[count] + 3)
+                        //目パチ
+                        if (eye_exist)
+                            if (reserveFrame.Count > blinkframe_count)//範囲外にならないようにチェック
                             {
-                                input_eye2.CopyTo(output_mat, input_eye2);
-                                count++;
+                                
+                                int blinkNum = Math.Abs(reserveFrame[blinkframe_count] - frame);
+
+                                if (blinkNum > inputs_Mat_eyes.Count - 1)
+                                    blinkNum = inputs_Mat_eyes.Count - 1;
+
+                                blinkNum = Math.Abs(blinkNum - inputs_Mat_eyes.Count) - 1;
+
+                                if (reserveFrame[blinkframe_count] + inputs_Mat_eyes.Count == frame)
+                                {
+                                    blinkframe_count++;
+                                }
+
+                                //Debug.WriteLine(blinkNum);
+                                
+                                using (var eyeMask = inputs_Mat_eyes[blinkNum].ExtractChannel(3))
+                                {
+                                    inputs_Mat_eyes[blinkNum].CopyTo(output_mat, eyeMask);
+                                }
+                                
+
                             }
                             else
-                                input_eye1.CopyTo(output_mat, input_eye1);
-                        }
-                        else { input_eye1.CopyTo(output_mat, input_eye1); }
+                            {
+                                using (var eyeMask = inputs_Mat_eyes[0].ExtractChannel(3))
+                                {
+                                    inputs_Mat_eyes[0].CopyTo(output_mat, eyeMask);
+                                }
+                            }
 
 
                         //フレーム書き出し
-                        //アルファチャンネルを含むとエラーになる
+                        //アルファチャンネルを含むとエラーになるので変換する
                         //vw.Write(output_mat.CvtColor(ColorConversionCodes.BGRA2BGR));
                         vw.Write(output_mat);
                     }
@@ -489,25 +453,34 @@ namespace Lip_Sync_Generator_2
             }
 
 
-            vw.Release();
-            vw.Dispose();
+            //後処理
+            foreach (Mat item in inputs_Mat_body)
+            {
+                item.Release();
+                item.Dispose();
+            }
+            foreach (Mat item in inputs_Mat_eyes)
+            {
+                item.Release();
+                item.Dispose();
+            }
 
-            input_mat1.Dispose();
-            input_mat2.Dispose();
-            input_mat3.Dispose();
-            input_eye1.Dispose();
-            input_eye2.Dispose();
-            input_eye3.Dispose();
+            GC.Collect();
 
+            //出力パス
             if (!Directory.Exists(out_path))
                 Directory.CreateDirectory(out_path);
+            string output_path = out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4";
 
+            ReplaceAudio(temp_mov_path, audio_path, output_path);
+            convert2Transparent(output_path);
+        }
+
+        private void ReplaceAudio(string input_VideoPath, string input_AudioPAth, string output_VideoPath)
+        {
             try
             {
-                string output_path = out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4";
-                FFMpeg.ReplaceAudio(temp_mov_path, audio_path, output_path);
-    
-                convert2Transparent(output_path);
+                FFMpeg.ReplaceAudio(input_VideoPath, input_AudioPAth, output_VideoPath);
             }
             catch (Exception ex)
             {
@@ -515,7 +488,7 @@ namespace Lip_Sync_Generator_2
             }
             finally
             {
-                File.Delete(temp_mov_path);
+                File.Delete(input_VideoPath);
             }
         }
 
@@ -523,20 +496,20 @@ namespace Lip_Sync_Generator_2
         /// <summary>
         /// 透過動画に変換
         /// </summary>
-        /// <param name="input_movie"></param>
-        private void convert2Transparent(string input_movie)
+        /// <param name="input_movie_path"></param>
+        private void convert2Transparent(string input_movie_path)
         {
             if (AlphaVideo)
                 try
                 {
                     using (Process process = new Process())
                     {
-                        string outPath = CurrentDir + @"\outputs\" + Path.GetFileNameWithoutExtension(input_movie) + ".mov";
+                        string outPath = CurrentDir + @"\outputs\" + Path.GetFileNameWithoutExtension(input_movie_path) + ".mov";
                         process.StartInfo.FileName = ffmpegDir + "\\ffmpeg.exe";
                         string bgColor = config.background[0].ToString("x2") + config.background[1].ToString("x2") + config.background[2].ToString("x2");
 
                         //-y 上書き
-                        process.StartInfo.Arguments = $@"-y -i {input_movie} -vf colorkey={bgColor}:{config.similarity}:{config.blend} -pix_fmt argb -c:v qtrle {outPath}";
+                        process.StartInfo.Arguments = $@"-y -i {input_movie_path} -vf colorkey={bgColor}:{config.similarity}:{config.blend} -pix_fmt argb -c:v qtrle {outPath}";
                         process.Start();
 
                         // コマンド終了まで待機
@@ -573,7 +546,7 @@ namespace Lip_Sync_Generator_2
 
                     Parallel.ForEach(selectedItems, option, p =>
                     {
-                        Create(p.Path);
+                        newCreate(p.Path, fileCollection);
                     });
                 }
                 catch (Exception ex)
@@ -727,6 +700,12 @@ namespace Lip_Sync_Generator_2
         private void AlphaVideo_CheckBox_Checked(object sender, RoutedEventArgs e)
         {
             AlphaVideo = true;
+        }
+
+        private void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            LipSync_th_TextBlock.Text = LipSync_th_Slider.Value.ToString("f1");
+            config.lipSync_threshold = (float)LipSync_th_Slider.Value;
         }
     }
 

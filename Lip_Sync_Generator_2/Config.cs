@@ -22,11 +22,8 @@ namespace Lip_Sync_Generator_2
             [JsonPropertyName("sample scale")]
             public float sample_scale { get; set; }
 
-            [JsonPropertyName("bigMouth threshold")]
-            public float bigMouth_th { get; set; }
-
-            [JsonPropertyName("smallMouth threshold")]
-            public float smallMouth_th { get; set; }
+            [JsonPropertyName("lip sync threshold")]
+            public float lipSync_threshold { get; set; }
 
             [JsonPropertyName("blink intervalFrame")]
             public int blink_intervalFrame { get; set; }
@@ -48,13 +45,12 @@ namespace Lip_Sync_Generator_2
                 framerate = 24;
                 average_samples = 1000;
                 sample_scale = 100;
-                smallMouth_th = 1;
-                bigMouth_th = 4;
+                lipSync_threshold = 2;
                 blink_intervalFrame = 72;
                 blink_interval_randomFrame = 24;
                 background = [0, 0, 255];
-                similarity = 0.1f;
-                blend = 0.5f;
+                similarity = 0.2f;
+                blend = 0.2f;
             }
         }
 
