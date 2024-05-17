@@ -1,35 +1,20 @@
-﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.IO;
 using Path = System.IO.Path;
 using FFMpegCore;
 using NAudio.Wave;
 using LiveCharts;
 using LiveCharts.Wpf;
-using LiveCharts.Defaults;
 using OpenCvSharp;
 using Window = System.Windows.Window;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Win32;
-using System.Security.Cryptography;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using static Lip_Sync_Generator_2.Config;
-using System.Drawing;
-using System.Diagnostics.Metrics;
-using System.Security.Policy;
-using System.Windows.Media.Media3D;
+using System.Xml.Linq;
+using System.Windows.Documents;
 
 namespace Lip_Sync_Generator_2
 {
@@ -356,6 +341,23 @@ namespace Lip_Sync_Generator_2
                 inputs_Mat_eyes.Add(Cv2.ImRead(item.Path, ImreadModes.Unchanged));
             }
 
+            //縦横ピクセルが2の倍数でないとエラーになるので奇数なら1を足す
+            if (size.Width % 2 != 0)
+                size.Width += 1;
+            if (size.Height % 2 != 0)
+                size.Height += 1;
+
+            //Resize
+            for (var i = 0; i < inputs_Mat_body.Count; i++)
+            {
+                inputs_Mat_body[i] = inputs_Mat_body[i].Resize(size);
+            }
+            for (var i = 0; i < inputs_Mat_eyes.Count; i++)
+            {
+                inputs_Mat_eyes[i] = inputs_Mat_eyes[i].Resize(size);
+            }
+
+
             //目のまばたき乱数を生成
             List<int> reserveFrame = new List<int>();
             for (int i = 0; i < averageListCopy.Count; i++)
@@ -366,130 +368,128 @@ namespace Lip_Sync_Generator_2
                 }
             }
 
-            //口パク目パチ処理
-            using (var vw = new VideoWriter(temp_mov_path, FourCC.H264, config!.framerate, size))
-            using (var basemat = new Mat(size, MatType.CV_8UC4, new Scalar(bb, gb, rb, 255)))
-            {
-
-                //分割数
-                int divide = inputs_Mat_body.Count;
-                //基準ステップ
-                float step = averageListCopy.Max() / divide / config.lipSync_threshold + 0.0001f;
-
-                Debug.WriteLine(step);
-
-                int blinkframe_count = 0;
-
-                for (int frame = 0; frame < averageListCopy.Count; frame++)
-                {
-
-                    //音量によって表示画像を切り替える
-                    int dispNum = ((int)(averageListCopy[frame] / step));
-                    if (dispNum >= divide)
-                        dispNum = divide - 1;
-
-                    //Debug.WriteLine(dispNum);
-
-                    //進捗表示
-                    if (frame % 10 == 0)
-                        this.Dispatcher.Invoke(() =>
-                        {
-                            Notice_TextBox.Text = ((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
-                        });
-
-                    if (frame % 1000 == 0)
-                        GC.Collect();
-
-                    using (var output_mat = basemat.Clone())
-                    {
-                        //アルファチャンネルをマスクとし、outputMatにコピーする
-                        //メモリリーク原因となるのでExtractChannelもusing
-                        using (var bodyMask = inputs_Mat_body[dispNum].ExtractChannel(3))
-                        {
-                            inputs_Mat_body[dispNum].CopyTo(output_mat, bodyMask);
-                        }
-
-                        //目パチ
-                        if (eye_exist)
-                            if (reserveFrame.Count > blinkframe_count)//範囲外にならないようにチェック
-                            {
-                                
-                                int blinkNum = Math.Abs(reserveFrame[blinkframe_count] - frame);
-
-                                if (blinkNum > inputs_Mat_eyes.Count - 1)
-                                    blinkNum = inputs_Mat_eyes.Count - 1;
-
-                                blinkNum = Math.Abs(blinkNum - inputs_Mat_eyes.Count) - 1;
-
-                                if (reserveFrame[blinkframe_count] + inputs_Mat_eyes.Count == frame)
-                                {
-                                    blinkframe_count++;
-                                }
-
-                                //Debug.WriteLine(blinkNum);
-                                
-                                using (var eyeMask = inputs_Mat_eyes[blinkNum].ExtractChannel(3))
-                                {
-                                    inputs_Mat_eyes[blinkNum].CopyTo(output_mat, eyeMask);
-                                }
-                                
-
-                            }
-                            else
-                            {
-                                using (var eyeMask = inputs_Mat_eyes[0].ExtractChannel(3))
-                                {
-                                    inputs_Mat_eyes[0].CopyTo(output_mat, eyeMask);
-                                }
-                            }
-
-
-                        //フレーム書き出し
-                        //アルファチャンネルを含むとエラーになるので変換する
-                        //vw.Write(output_mat.CvtColor(ColorConversionCodes.BGRA2BGR));
-                        vw.Write(output_mat);
-                    }
-                }
-            }
-
-
-            //後処理
-            foreach (Mat item in inputs_Mat_body)
-            {
-                item.Release();
-                item.Dispose();
-            }
-            foreach (Mat item in inputs_Mat_eyes)
-            {
-                item.Release();
-                item.Dispose();
-            }
-
-            GC.Collect();
-
             //出力パス
             if (!Directory.Exists(out_path))
                 Directory.CreateDirectory(out_path);
             string output_path = out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4";
 
-            ReplaceAudio(temp_mov_path, audio_path, output_path);
+            try
+            {
+
+                //口パク目パチ処理
+                using (var vw = new VideoWriter(temp_mov_path, FourCC.H264, config!.framerate, size))
+                using (var basemat = new Mat(size, MatType.CV_8UC4, new Scalar(bb, gb, rb, 255)))
+                {
+
+                    //分割数
+                    int divide = inputs_Mat_body.Count;
+                    //基準ステップ
+                    float step = averageListCopy.Max() / divide / config.lipSync_threshold + 0.0001f;
+
+                    Debug.WriteLine(step);
+
+                    int blinkframe_count = 0;
+
+                    for (int frame = 0; frame < averageListCopy.Count; frame++)
+                    {
+
+                        //音量によって表示画像を切り替える
+                        int dispNum = ((int)(averageListCopy[frame] / step));
+                        if (dispNum >= divide)
+                            dispNum = divide - 1;
+
+                        //Debug.WriteLine(dispNum);
+
+                        //進捗表示
+                        if (frame % 10 == 0)
+                            this.Dispatcher.Invoke(() =>
+                            {
+                                Notice_TextBox.Text = ((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
+                            });
+
+                        if (frame % 1000 == 0)
+                            GC.Collect();
+
+                        using (var output_mat = basemat.Clone())
+                        {
+                            //アルファチャンネルをマスクとし、outputMatにコピーする
+                            //メモリリーク原因となるのでExtractChannelもusing
+                            using (var bodyMask = inputs_Mat_body[dispNum].ExtractChannel(3))
+                            {
+                                inputs_Mat_body[dispNum].CopyTo(output_mat, bodyMask);
+                            }
+
+                            //目パチ
+                            if (eye_exist)
+                                if (reserveFrame.Count > blinkframe_count)//範囲外にならないようにチェック
+                                {
+
+                                    int blinkNum = Math.Abs(reserveFrame[blinkframe_count] - frame);
+
+                                    if (blinkNum > inputs_Mat_eyes.Count - 1)
+                                        blinkNum = inputs_Mat_eyes.Count - 1;
+
+                                    blinkNum = Math.Abs(blinkNum - inputs_Mat_eyes.Count) - 1;
+
+                                    if (reserveFrame[blinkframe_count] + inputs_Mat_eyes.Count == frame)
+                                    {
+                                        blinkframe_count++;
+                                    }
+
+                                    MatFunction.TransparentComposition(output_mat, inputs_Mat_eyes[blinkNum]);
+
+                                }
+                                else
+                                {
+                                    MatFunction.TransparentComposition(output_mat, inputs_Mat_eyes[0]);
+                                }
+
+
+                            //フレーム書き出し
+                            //アルファチャンネルを含むとエラーになるので変換する
+                            //vw.Write(output_mat.CvtColor(ColorConversionCodes.BGRA2BGR));
+                            //mp4の場合は問題ないようです
+                            vw.Write(output_mat);
+                        }
+                    }
+                }
+
+
+                //後処理
+                foreach (Mat item in inputs_Mat_body)
+                {
+                    item.Release();
+                    item.Dispose();
+                }
+                foreach (Mat item in inputs_Mat_eyes)
+                {
+                    item.Release();
+                    item.Dispose();
+                }
+                ReplaceAudio(temp_mov_path, audio_path, output_path);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                this.Dispatcher.Invoke(() =>
+                {
+                    Notice_TextBox.Text = ex.Message;
+                });
+
+                throw new Exception(ex.Message, ex.InnerException);
+            }
+            finally
+            {
+                File.Delete(temp_mov_path);
+                GC.Collect();
+            }
+
             convert2Transparent(output_path);
         }
 
         private void ReplaceAudio(string input_VideoPath, string input_AudioPAth, string output_VideoPath)
         {
-            try
-            {
-                FFMpeg.ReplaceAudio(input_VideoPath, input_AudioPAth, output_VideoPath);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
-            }
-            finally
-            {
-                File.Delete(input_VideoPath);
-            }
+            FFMpeg.ReplaceAudio(input_VideoPath, input_AudioPAth, output_VideoPath);
         }
 
         bool AlphaVideo = false;
@@ -520,31 +520,34 @@ namespace Lip_Sync_Generator_2
                 {
                     Debug.WriteLine(ex.ToString());
                 }
-                finally
-                {
-                }
         }
 
         private async void Run()
         {
             Notice_TextBox.Text = "Run";
             Run_Button.IsEnabled = false;
-            var selectedItems = Audio_listBox.SelectedItems?.ToList<Config.FileName>() ?? new();
+            var selectedAudioItems = Audio_listBox.SelectedItems?.ToList<Config.FileName>() ?? new();
+
             await Task.Run(() =>
             {
                 bool done = true;
                 try
                 {
-                    if (selectedItems.Count == 0)
+                    if(fileCollection.Body.Count == 0)
                     {
-                        MessageBox.Show("ファイルが不足しています。", "Error");
+                        MessageBox.Show("画像がありません", "Error");
+                        throw new Exception("Item == 0");
+                    }
+                    if (selectedAudioItems.Count == 0)
+                    {
+                        MessageBox.Show("オーディオファイルが選択されていません", "Error");
                         throw new Exception("Item == 0");
                     }
                     //スレッド数を8に制限
                     ParallelOptions option = new ParallelOptions();
                     option.MaxDegreeOfParallelism = 8;
 
-                    Parallel.ForEach(selectedItems, option, p =>
+                    Parallel.ForEach(selectedAudioItems, option, p =>
                     {
                         newCreate(p.Path, fileCollection);
                     });
@@ -580,12 +583,20 @@ namespace Lip_Sync_Generator_2
             Run();
         }
 
+        private void ListBoxSelectLastIndex(ListBox listBox)
+        {
+            if (listBox.Items.Count > 0)
+                listBox.SelectedIndex = listBox.Items.Count - 1;
+        }
+
         private void Delete_main_Button_Click(object sender, RoutedEventArgs e)
         {
             if (body_listBox.SelectedIndex >= 0)
                 fileCollection.Body.RemoveAt(body_listBox.SelectedIndex);
             if (body_listBox.Items.Count == 0)
                 BodyImage.Source = null;
+
+            ListBoxSelectLastIndex(body_listBox);
         }
 
         private void Delete_eyes_Button_Click(object sender, RoutedEventArgs e)
@@ -594,12 +605,16 @@ namespace Lip_Sync_Generator_2
                 fileCollection.Eyes.RemoveAt(Eyes_listBox.SelectedIndex);
             if (Eyes_listBox.Items.Count == 0)
                 EyeImage.Source = null;
+
+            ListBoxSelectLastIndex(Eyes_listBox);
         }
 
         private void Delete_audio_Button_Click(object sender, RoutedEventArgs e)
         {
             if (Audio_listBox.SelectedIndex >= 0)
                 fileCollection.Audio.RemoveAt(Audio_listBox.SelectedIndex);
+
+            ListBoxSelectLastIndex(Audio_listBox);
         }
 
         private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
