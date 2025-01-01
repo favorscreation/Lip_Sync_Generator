@@ -1,18 +1,20 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
 using System;
-using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Lip_Sync_Generator_2
 {
     internal class MatFunction
     {
-        /// <summary>
-        ///         //透明ピクセルを置換
+         /// <summary>
+        /// 透明ピクセルを指定色で置換する
         /// </summary>
-        /// <param name="mat"></param>
+        /// <param name="mat">対象のMatオブジェクト</param>
+        /// <param name="R">置換する赤色の値</param>
+        /// <param name="G">置換する緑色の値</param>
+        /// <param name="B">置換する青色の値</param>
         static public void Transparent_replacement(Mat mat, byte R, byte G, byte B)
         {
-            //ポインタによるアクセス
             unsafe
             {
                 byte* b = mat.DataPointer;
@@ -20,26 +22,25 @@ namespace Lip_Sync_Generator_2
                 {
                     for (int j = 0; j < mat.Width; j++)
                     {
-                        if (b[3] == 0)
+                        if (b[3] == 0) // アルファ値が0（透明）の場合
                         {
                             b[0] = B;   //B
                             b[1] = G;   //G
                             b[2] = R;   //R
-                            b[3] = 255; //A
+                            b[3] = 255; //A (不透明にする)
                         }
-                        b = b + 4;
+                        b += 4;
                     }
                 }
             }
         }
 
         /// <summary>
-        /// 透明ピクセルを黒に置換　マスク処理用
+        /// 透明ピクセルを黒色で置換する (マスク処理用)
         /// </summary>
-        /// <param name="mat"></param>
+        /// <param name="mat">対象のMatオブジェクト</param>
         static public void Transparent_replacement_ToBlack(Mat mat)
         {
-            //ポインタによるアクセス
             unsafe
             {
                 byte* b = mat.DataPointer;
@@ -47,84 +48,59 @@ namespace Lip_Sync_Generator_2
                 {
                     for (int j = 0; j < mat.Width; j++)
                     {
-                        if (b[3] == 0)
+                        if (b[3] == 0) // アルファ値が0（透明）の場合
                         {
                             b[0] = 0; //B
                             b[1] = 0; //G
                             b[2] = 0; //R
-                            b[3] = 0; //A
+                            b[3] = 0; //A (透明にする)
                         }
-                        b = b + 4;
+                        b += 4;
                     }
                 }
             }
         }
 
         /// <summary>
-        /// 透過画像を重ねる 同じサイズである必要がある
+        /// 透過画像を重ね合わせる（アルファブレンド）
         /// </summary>
-        /// <param name="src"></param>
-        /// <param name="add"></param>
+        /// <param name="src">合成先のMatオブジェクト</param>
+        /// <param name="add">合成するMatオブジェクト</param>
         static public void TransparentComposition(Mat src, Mat add)
         {
-
-            //シングル
-            /*
-            unsafe
+            if (src.Size() != add.Size())
             {
-                byte* src_b = src.DataPointer;
-                byte* add_b = add.DataPointer;
-                float weight;
-                for (int i = 0; i < src.Height; i++)
-                {
-                    for (int j = 0; j < src.Width; j++)
-                    {
-                        if (add_b[3] != 0)
-                        {
-                            weight = src_b[3] / 255;//0-1
-                            src_b[0] = (byte)(add_b[0] * weight + src_b[0] * (1 - weight)); //B
-                            src_b[1] = (byte)(add_b[1] * weight + src_b[1] * (1 - weight)); //G
-                            src_b[2] = (byte)(add_b[2] * weight + src_b[2] * (1 - weight)); //R
-                            src_b[3] = (byte)(add_b[3] * weight + src_b[3] * (1 - weight)); //A
-                        }
-
-                        src_b = src_b + 4;
-                        add_b = add_b + 4;
-                    }
-                }
-
-                Debug.WriteLine(src_b - src.DataPointer);
-
+                throw new ArgumentException("画像のサイズが異なります。");
             }
-            */
 
-
-            //並列化
             unsafe
             {
-                int Num = src.Height * src.Width;
-                int d = Environment.ProcessorCount;
-                Parallel.For(0, d, x =>
+                int numPixels = src.Height * src.Width;
+                Cv2.ParallelLoopBody((index, total) =>
                 {
-                    float weight;
-                    byte* src_b = src.DataPointer;
-                    byte* add_b = add.DataPointer;
+                    int start = (int)((long)index * numPixels / total);
+                    int end = (int)((long)(index + 1) * numPixels / total);
 
-                    src_b = src_b + (Num / d * x * 4);
-                    add_b = add_b + (Num / d * x * 4);
+                    byte* src_b = src.DataPointer + start * 4;
+                    byte* add_b = add.DataPointer + start * 4;
 
-                    for (int i = 0; i < Num / d; i++)
+                    for (int i = start; i < end; i++)
                     {
-                        if (add_b[3] != 0)
+                        float alpha = (float)add_b[3] / 255.0f; // 合成する画像のアルファ値を0-1の範囲に変換
+
+                         if(alpha > 0)
                         {
-                            weight = (float)add_b[3] / 255;//0-1
-                            src_b[0] = (byte)((add_b[0] * weight) + (src_b[0] * (1 - weight))); //B
-                            src_b[1] = (byte)((add_b[1] * weight) + (src_b[1] * (1 - weight))); //G
-                            src_b[2] = (byte)((add_b[2] * weight) + (src_b[2] * (1 - weight))); //R
-                            src_b[3] = (byte)((add_b[3] * weight) + (src_b[3] * (1 - weight))); //A
-                        }
-                        src_b = src_b + 4;
-                        add_b = add_b + 4;
+                           // アルファブレンド処理
+                           src_b[0] = (byte)((add_b[0] * alpha) + (src_b[0] * (1 - alpha))); // B
+                           src_b[1] = (byte)((add_b[1] * alpha) + (src_b[1] * (1 - alpha))); // G
+                           src_b[2] = (byte)((add_b[2] * alpha) + (src_b[2] * (1 - alpha))); // R
+
+                           // 合成後のアルファ値を不透明に設定 (不透明合成)
+                           src_b[3] = 255;
+                       }
+
+                        src_b += 4;
+                        add_b += 4;
                     }
                 });
             }
