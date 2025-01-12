@@ -184,12 +184,12 @@
                                 <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top"
                                 Width="116" Margin="10,5,0,0"><Run Language="ja-jp" Text="LipSync Threshold" /></TextBlock>
                                 <Slider x:Name="LipSync_th_Slider" HorizontalAlignment="Left" Margin="10,25,0,0"
-                             VerticalAlignment="Top" Width="196" Maximum="5"
-                             Value="{Binding lipSync_threshold}"
-                             ValueChanged="LipSync_th_Slider_ValueChanged" />
+                                VerticalAlignment="Top" Width="196" Maximum="100"
+                                Value="{Binding lipSync_threshold_percent}"
+                                ValueChanged="LipSync_th_Slider_ValueChanged" />
                                 <TextBlock x:Name="LipSync_th_TextBlock" HorizontalAlignment="Left" Margin="211,25,0,0"
-                                TextWrapping="Wrap" Text="{Binding Value, ElementName=LipSync_th_Slider, StringFormat=F1}"
-                                VerticalAlignment="Top" />
+                                 TextWrapping="Wrap" Text="{Binding Value, ElementName=LipSync_th_Slider, StringFormat={}{0:F1}%}"
+                                 VerticalAlignment="Top" />
                             </Grid>
                         </GroupBox>
                         <GroupBox Header="まばたき設定">
@@ -197,9 +197,9 @@
                                 <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top"
                                 Width="116" Margin="10,5,0,0"><Run Language="ja-jp" Text="Blink Frequency" /></TextBlock>
                                 <Slider x:Name="BlinkFrequency_Slider" HorizontalAlignment="Left" Margin="10,25,0,0"
-                             VerticalAlignment="Top" Width="196" Maximum="1"
-                             Value="{Binding blink_frequency}"
-                             ValueChanged="BlinkFrequency_Slider_ValueChanged" />
+                                VerticalAlignment="Top" Width="196" Maximum="1"
+                                Value="{Binding blink_frequency}"
+                                ValueChanged="BlinkFrequency_Slider_ValueChanged" />
                                 <TextBlock x:Name="BlinkFrequency_TextBlock" HorizontalAlignment="Left" Margin="211,25,0,0"
                                 TextWrapping="Wrap" Text="{Binding Value, ElementName=BlinkFrequency_Slider, StringFormat=F2}"
                                 VerticalAlignment="Top" />

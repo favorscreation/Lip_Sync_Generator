@@ -1,18 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
-using System.IO;
-using Path = System.IO.Path;
-using NAudio.Wave;
+using System.Windows.Media;
 using LiveCharts;
 using LiveCharts.Wpf;
-using Microsoft.Win32;
-using System.Threading.Tasks;
-using System.Diagnostics;
 
 namespace Lip_Sync_Generator_2
 {
@@ -20,6 +15,9 @@ namespace Lip_Sync_Generator_2
     {
         private LipSyncProcessor _lipSyncProcessor;
         private ConfigManager _configManager;
+        private Canvas _thresholdCanvas;
+        private TextBlock _thresholdText;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -37,6 +35,9 @@ namespace Lip_Sync_Generator_2
 
             // 初期選択 (ConfigManager初期化後)
             SetInitialSelection();
+
+            _thresholdText = new TextBlock { Text = "Threshold", Foreground = Brushes.Red };
+
         }
 
         private void SetInitialSelection()
@@ -111,7 +112,7 @@ namespace Lip_Sync_Generator_2
             {
                 if (body_listBox.SelectedItem is Config.FileName selectedItem)
                 {
-                    BodyImage.Source = new BitmapImage(new Uri(selectedItem.Path));
+                    BodyImage.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(selectedItem.Path));
                 }
             }
             catch (Exception ex)
@@ -127,7 +128,7 @@ namespace Lip_Sync_Generator_2
             {
                 if (Eyes_listBox.SelectedItem is Config.FileName selectedItem)
                 {
-                    EyeImage.Source = new BitmapImage(new Uri(selectedItem.Path));
+                    EyeImage.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(selectedItem.Path));
                 }
             }
             catch (Exception ex)
@@ -168,20 +169,38 @@ namespace Lip_Sync_Generator_2
         /// </summary>
         private void DrawingChart(List<float> averageList)
         {
-            audioChart.Series.Clear(); //描画領域のクリア
-            audioChart.DisableAnimations = true;//アニメーション禁止
-            audioChart.DataTooltip = null;    //ツールチップ無効
-            audioChart.AxisY[0].MinValue = 0;  //軸は0からスタート
+            audioChart.Series.Clear();
+            audioChart.DisableAnimations = true;
+            audioChart.DataTooltip = null;
+            audioChart.AxisY[0].MinValue = 0;
             audioChart.AxisX[0].MinValue = 0;
 
-            //データ作成
             double[] ys1 = Enumerable.Range(0, averageList.Count).Select(i => (double)averageList[i]).ToArray();
 
             LineSeries lineSeries = new LineSeries();
             lineSeries.PointGeometry = null;
             lineSeries.Values = new ChartValues<double>(ys1);
 
-            audioChart.Series.Add(lineSeries); //シリーズを登録
+            audioChart.Series.Add(lineSeries);
+
+        }
+
+        private void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            LipSync_th_TextBlock.Text = LipSync_th_Slider.Value.ToString("f1") + "%";
+            _configManager.Config.lipSync_threshold = _configManager.Config.lipSync_threshold_percent / 100 * 5; // スレッショルドを更新
+            if (Audio_listBox.SelectedItem is Config.FileName selectedItem)
+            {
+                //スライダーの値を変更した場合グラフも再描画
+                Task.Run(() =>
+                {
+                    var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        DrawingChart(averageList);
+                    });
+                });
+            }
         }
 
 
@@ -245,12 +264,10 @@ namespace Lip_Sync_Generator_2
         {
             _lipSyncProcessor.AlphaVideo = true;
         }
-
-        private void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void BlinkFrequency_Slider_ValueChanged(object sender, RoutedEventArgs e)
         {
-            LipSync_th_TextBlock.Text = LipSync_th_Slider.Value.ToString("f1");
+            BlinkFrequency_TextBlock.Text = BlinkFrequency_Slider.Value.ToString("f2");
         }
-
         private async void Run_Button_Click(object sender, RoutedEventArgs e)
         {
             Notice_TextBlock.Text = "動画生成を開始します...";
@@ -293,10 +310,11 @@ namespace Lip_Sync_Generator_2
                 });
             }
         }
-        private void BlinkFrequency_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            BlinkFrequency_TextBlock.Text = BlinkFrequency_Slider.Value.ToString("f2");
+            base.OnClosing(e);
+            // アプリ終了時に設定を保存
+            _configManager.SaveConfig();
         }
-
     }
 }

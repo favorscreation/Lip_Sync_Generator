@@ -97,8 +97,6 @@ namespace Lip_Sync_Generator_2
                 outputPath = outPath + Path.GetFileNameWithoutExtension(audioPath) + ".mp4";
             }
 
-
-
             List<float> averageListCopy = AnalyzeAudio(audioPath);
 
             List<Mat> inputsMatBody = new List<Mat>();
@@ -146,7 +144,6 @@ namespace Lip_Sync_Generator_2
 
             try
             {
-
                 using (var baseMat = new Mat(size, MatType.CV_8UC4))
                 {
                     if (AlphaVideo)
@@ -178,10 +175,11 @@ namespace Lip_Sync_Generator_2
                         //分割数
                         int divide = inputsMatBody.Count;
                         //基準ステップ
-                        float step = averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001f;
-                        using (MemoryStream ms = new MemoryStream())
+                        float step = (float)(averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001);
+
+                        for (int frame = 0; frame < averageListCopy.Count; frame++)
                         {
-                            for (int frame = 0; frame < averageListCopy.Count; frame++)
+                            using (MemoryStream ms = new MemoryStream())
                             {
                                 // 音量によって表示画像を切り替える
                                 int dispNum = ((int)(averageListCopy[frame] / step));
@@ -262,21 +260,19 @@ namespace Lip_Sync_Generator_2
                                         }
                                         ms.Write(frameBytes, 0, frameBytes.Length);
 
+                                        byte[] allBytes = ms.ToArray();
+                                        process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
+
                                     }
 
 
                                 }
-                                if (frame % 10 == 0)
-                                {
-                                    progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
-                                }
                             }
-                            //MemoryStreamに書き込んだデータをFFmpegに渡す。
-                            byte[] allBytes = ms.ToArray();
-                            process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
-
+                            if (frame % 10 == 0)
+                            {
+                                progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
+                            }
                         }
-
                         process.StandardInput.Close();
                         string error = process.StandardError.ReadToEnd();
                         process.WaitForExit();

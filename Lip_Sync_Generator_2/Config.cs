@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
@@ -42,12 +40,20 @@ namespace Lip_Sync_Generator_2
                 set { _sample_scale = value; OnPropertyChanged(nameof(sample_scale)); }
             }
 
-            private float _lipSync_threshold;
+            private double _lipSync_threshold;
             [JsonPropertyName("lip sync threshold")]
-            public float lipSync_threshold
+            public double lipSync_threshold
             {
                 get { return _lipSync_threshold; }
                 set { _lipSync_threshold = value; OnPropertyChanged(nameof(lipSync_threshold)); }
+            }
+
+            private double _lipSync_threshold_percent;
+            [JsonPropertyName("lip sync threshold percent")]
+            public double lipSync_threshold_percent
+            {
+                get { return _lipSync_threshold_percent; }
+                set { _lipSync_threshold_percent = value; OnPropertyChanged(nameof(lipSync_threshold_percent)); }
             }
 
             private Color _background;
@@ -66,7 +72,6 @@ namespace Lip_Sync_Generator_2
                 set { _similarity = value; OnPropertyChanged(nameof(similarity)); }
             }
 
-
             private float _blend;
             [JsonPropertyName("blend")]
             public float blend
@@ -74,7 +79,6 @@ namespace Lip_Sync_Generator_2
                 get { return _blend; }
                 set { _blend = value; OnPropertyChanged(nameof(blend)); }
             }
-
 
             private float _blink_frequency;
             [JsonPropertyName("blink frequency")]
@@ -84,13 +88,13 @@ namespace Lip_Sync_Generator_2
                 set { _blink_frequency = value; OnPropertyChanged(nameof(blink_frequency)); }
             }
 
-
             public Values()
             {
                 framerate = 24;
                 average_samples = 1000;
                 sample_scale = 100;
                 lipSync_threshold = 2;
+                lipSync_threshold_percent = 40;
                 background = Colors.Blue;
                 similarity = 0.2f;
                 blend = 0.2f;
@@ -179,6 +183,5 @@ namespace Lip_Sync_Generator_2
             }
 
         }
-
     }
 }

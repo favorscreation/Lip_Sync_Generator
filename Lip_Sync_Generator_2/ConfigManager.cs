@@ -44,6 +44,7 @@ namespace Lip_Sync_Generator_2
             if (JsonUtil.JsonToConfig(str) == null)
             {
                 Config = new Config.Values();
+                Config.lipSync_threshold_percent = 40;  // スレッショルドの初期値を設定
                 // Notice_TextBox.Text = "デフォルト設定が適用されました";
                 Debug.WriteLine(JsonUtil.ToJson(Config));
 
@@ -55,23 +56,24 @@ namespace Lip_Sync_Generator_2
             }
             else
             {
-                Config = JsonUtil.JsonToConfig(str)!;
+                Config = JsonUtil.JsonToConfig(str) ?? new Config.Values();  // nullの場合は新しいConfig.Valuesを作成
                 //Notice_TextBox.Text = "設定(外部ファイル)を読み込みました";
             }
             // ファイルコレクションをロード (設定ファイルが存在しない場合、空のコレクションとなる)
             string presetStr = "";
 
-            if (File.Exists(@"preset\default.json"))
-                presetStr = new StreamReader(@"preset\default.json", enc).ReadToEnd();
+            /*  if (File.Exists(@"preset\default.json"))
+                 presetStr = new StreamReader(@"preset\default.json", enc).ReadToEnd();
 
-            if (JsonUtil.JsonToPreset(presetStr) != null)
-            {
-                FileCollection = JsonUtil.JsonToPreset(presetStr)!;
-            }
-            else
-            {
-                FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
-            }
+             if (JsonUtil.JsonToPreset(presetStr) != null)
+             {
+                 FileCollection = JsonUtil.JsonToPreset(presetStr)!;
+             }
+             else
+             {
+                 FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
+             } */
+            FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
         }
         /// <summary>
         /// プリセットを読み込む
@@ -135,6 +137,42 @@ namespace Lip_Sync_Generator_2
             catch (Exception ex)
             {
                 MessageBox.Show($"プリセットの保存に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        /// <summary>
+        /// コンフィグを保存する
+        /// </summary>
+        public void SaveConfig()
+        {
+            string str = JsonUtil.ToJson(Config);
+            Encoding enc = Encoding.GetEncoding("utf-8");
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(ConfigFilePath, false, enc))
+                {
+                    writer.WriteLine(str);
+                }
+                Debug.WriteLine("Config saved automatically.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Config save failed : {ex.Message}");
+                MessageBox.Show($"設定の保存に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            str = JsonUtil.ToJson(FileCollection);
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(@"preset\default.json", false, enc))
+                {
+                    writer.WriteLine(str);
+                }
+                Debug.WriteLine("FileCollection saved automatically.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"FileCollection save failed : {ex.Message}");
+                MessageBox.Show($"設定の保存に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         /// <summary>
