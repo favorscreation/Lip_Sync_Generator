@@ -15,12 +15,12 @@ namespace Lip_Sync_Generator_2
         private int _frameCount = 0;
         private int _blinkFrameCount = 0;
         private int _nextBlinkFrame = 0;
+        private Dictionary<string, Mat> _resizedImageCache = new Dictionary<string, Mat>();
 
         public VideoProcessor(ConfigManager configManager)
         {
             _configManager = configManager;
         }
-
 
         /// <summary>
         /// 音声のボリュームを解析
@@ -113,6 +113,12 @@ namespace Lip_Sync_Generator_2
             //body画像を読み込み、リサイズ
             foreach (var item in fileCollection.Body)
             {
+                Mat resizedMat;
+                if (_resizedImageCache.TryGetValue(item.Path, out resizedMat))
+                {
+                    inputsMatBody.Add(resizedMat);
+                    continue;
+                }
                 using (var tempMat = Cv2.ImRead(item.Path, ImreadModes.Unchanged))
                 {
 
@@ -127,7 +133,9 @@ namespace Lip_Sync_Generator_2
 
                         checkSize = true;
                     }
-                    inputsMatBody.Add(tempMat.Resize(size));
+                    resizedMat = tempMat.Resize(size);
+                    _resizedImageCache[item.Path] = resizedMat;
+                    inputsMatBody.Add(resizedMat);
 
                 }
             }
@@ -136,9 +144,17 @@ namespace Lip_Sync_Generator_2
             List<Config.FileName> eyeFiles = fileCollection.Eyes.ToList();
             for (int i = 0; i < eyeFiles.Count; i++)
             {
+                Mat resizedMat;
+                if (_resizedImageCache.TryGetValue(eyeFiles[i].Path, out resizedMat))
+                {
+                    inputsMatEyes.Add(resizedMat);
+                    continue;
+                }
                 using (var tempMat = Cv2.ImRead(eyeFiles[i].Path, ImreadModes.Unchanged))
                 {
-                    inputsMatEyes.Add(tempMat.Resize(size));
+                    resizedMat = tempMat.Resize(size);
+                    _resizedImageCache[eyeFiles[i].Path] = resizedMat;
+                    inputsMatEyes.Add(resizedMat);
                 }
             }
 
@@ -262,10 +278,7 @@ namespace Lip_Sync_Generator_2
 
                                         byte[] allBytes = ms.ToArray();
                                         process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
-
                                     }
-
-
                                 }
                             }
                             if (frame % 10 == 0)
@@ -295,14 +308,11 @@ namespace Lip_Sync_Generator_2
             }
             finally
             {
-                foreach (Mat item in inputsMatBody)
+                foreach (var item in _resizedImageCache)
                 {
-                    item.Dispose(); // Release は不要
+                    item.Value.Dispose();
                 }
-                foreach (Mat item in inputsMatEyes)
-                {
-                    item.Dispose();// Release は不要
-                }
+                _resizedImageCache.Clear();
                 GC.Collect();
             }
         }
