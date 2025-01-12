@@ -32,13 +32,20 @@ namespace Lip_Sync_Generator_2
             _lipSyncProcessor = new LipSyncProcessor(_configManager);
 
             // UIへのバインド
-            BindData();
+            body_listBox.ItemsSource = _configManager.FileCollection.Body;
+            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
+            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
         }
 
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            BindData();
+            if (body_listBox.Items.Count != 0)
+                body_listBox.SelectedIndex = 0;
+            if (Eyes_listBox.Items.Count != 0)
+                Eyes_listBox.SelectedIndex = 0;
+            if (Audio_listBox.Items.Count != 0)
+                Audio_listBox.SelectedIndex = 0;
         }
 
         // UIイベントハンドラ
@@ -79,15 +86,15 @@ namespace Lip_Sync_Generator_2
         {
             if (sender == BodyDropBorder)
             {
-                _lipSyncProcessor.DropFile(body_listBox, e, _configManager.FileCollection);
+                _lipSyncProcessor.DropFile(body_listBox, BodyDropBorder, e, _configManager.FileCollection);
             }
             else if (sender == EyesDropBorder)
             {
-                _lipSyncProcessor.DropFile(Eyes_listBox, e, _configManager.FileCollection);
+                _lipSyncProcessor.DropFile(Eyes_listBox, EyesDropBorder, e, _configManager.FileCollection);
             }
             else if (sender == AudioDropBorder)
             {
-                _lipSyncProcessor.DropFile(Audio_listBox, e, _configManager.FileCollection);
+                _lipSyncProcessor.DropFile(Audio_listBox, AudioDropBorder, e, _configManager.FileCollection);
             }
         }
 
@@ -131,8 +138,15 @@ namespace Lip_Sync_Generator_2
             }
             try
             {
-                var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
-                DrawingChart(averageList);
+                // UIスレッドを占有しないようにTask.Run内で処理を実行
+                Task.Run(() =>
+                {
+                    var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        DrawingChart(averageList);
+                    });
+                });
             }
             catch (Exception ex)
             {
@@ -186,14 +200,6 @@ namespace Lip_Sync_Generator_2
         private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
         {
             _configManager.LoadPreset(_configManager.FileCollection);
-            BindData();
-        }
-        void BindData()
-        {
-            body_listBox.ItemsSource = _configManager.FileCollection.Body;
-            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
-            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
-
             if (body_listBox.Items.Count != 0)
                 body_listBox.SelectedIndex = 0;
             if (Eyes_listBox.Items.Count != 0)
@@ -247,13 +253,18 @@ namespace Lip_Sync_Generator_2
 
             try
             {
-                await Task.Run(() => _lipSyncProcessor.Run(selectedAudioItems, _configManager.FileCollection, (progress) =>
+                // UIスレッドを占有しないようにTask.Run内で処理を実行
+                await Task.Run(() =>
                 {
-                    this.Dispatcher.Invoke(() =>
+                    _lipSyncProcessor.Run(selectedAudioItems, _configManager.FileCollection, (progress) =>
                     {
-                        Notice_TextBlock.Text = progress;
+                        // UIスレッドに結果を反映
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            Notice_TextBlock.Text = progress;
+                        });
                     });
-                }));
+                });
 
                 this.Dispatcher.Invoke(() =>
                 {

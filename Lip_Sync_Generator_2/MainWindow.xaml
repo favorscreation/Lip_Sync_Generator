@@ -206,7 +206,7 @@
                             </Grid>
                         </GroupBox>
                         <Grid Margin="0,10,0,0">
-                            <CheckBox x:Name="AlphaVideo_CheckBox" Content="透過動画も出力する（ファイルサイズ大）"
+                            <CheckBox x:Name="AlphaVideo_CheckBox" Content="透過動画を出力する（ファイルサイズ大）"
                            FontSize="14" HorizontalAlignment="Left" Width="252" Height="18" VerticalAlignment="Top"
                            IsChecked="False" Unchecked="AlphaVideo_CheckBox_Unchecked"
                            Checked="AlphaVideo_CheckBox_Checked"  />
