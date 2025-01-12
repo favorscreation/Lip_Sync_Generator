@@ -19,7 +19,6 @@ namespace Lip_Sync_Generator_2
         private const string PresetFileExtension = ".json";
         public ConfigManager()
         {
-
             //ffmpegのパスを通す
             FFMpegCore.GlobalFFOptions.Configure(options => options.BinaryFolder = _ffmpegDir);
 
@@ -59,37 +58,53 @@ namespace Lip_Sync_Generator_2
                 Config = JsonUtil.JsonToConfig(str)!;
                 //Notice_TextBox.Text = "設定(外部ファイル)を読み込みました";
             }
+            // ファイルコレクションをロード (設定ファイルが存在しない場合、空のコレクションとなる)
+            string presetStr = "";
+
+            if (File.Exists(@"preset\default.json"))
+                presetStr = new StreamReader(@"preset\default.json", enc).ReadToEnd();
+
+            if (JsonUtil.JsonToPreset(presetStr) != null)
+            {
+                FileCollection = JsonUtil.JsonToPreset(presetStr)!;
+            }
+            else
+            {
+                FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
+            }
         }
         /// <summary>
         /// プリセットを読み込む
         /// </summary>
         public void LoadPreset(Config.FileCollection fileCollection)
         {
-
             var dialog = new OpenFileDialog();
             dialog.Filter = PresetFileFilter;
             dialog.InitialDirectory = CurrentDir + "\\preset";
 
             var result = dialog.ShowDialog() ?? false;
 
-            // 保存ボタン以外が押下された場合
             if (!result)
             {
-                // 終了します。
                 return;
             }
 
             try
             {
                 string content = File.ReadAllText(dialog.FileName);
+                var loadedCollection = JsonUtil.JsonToPreset(content) ?? new Config.FileCollection();
 
-                FileCollection = JsonUtil.JsonToPreset(content) ?? new Config.FileCollection();
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    FileCollection.Audio = loadedCollection.Audio;
+                    FileCollection.Body = loadedCollection.Body;
+                    FileCollection.Eyes = loadedCollection.Eyes;
+                });
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"プリセットの読み込みに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
         }
 
         /// <summary>

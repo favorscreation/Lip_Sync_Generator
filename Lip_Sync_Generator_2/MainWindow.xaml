@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Lip_Sync_Generator_2"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
-        mc:Ignorable="d" Height="850" Width="1050" Loaded="Window_Loaded" MinHeight="850" MinWidth="1000"
+        mc:Ignorable="d" Height="850" Width="1050" MinHeight="850" MinWidth="1000"
         Title="Lip Sync Generator">
 
     <Window.Resources>

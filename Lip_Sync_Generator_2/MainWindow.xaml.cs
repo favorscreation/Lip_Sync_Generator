@@ -25,27 +25,34 @@ namespace Lip_Sync_Generator_2
             InitializeComponent();
             // ConfigManager の初期化
             _configManager = new ConfigManager();
-            // 設定をUIに反映
+
+            // UIへのバインド (ConfigManager初期化後)
             this.DataContext = _configManager.Config;
+            body_listBox.ItemsSource = _configManager.FileCollection.Body;
+            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
+            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
 
             // LipSyncProcessor の初期化
             _lipSyncProcessor = new LipSyncProcessor(_configManager);
 
-            // UIへのバインド
-            body_listBox.ItemsSource = _configManager.FileCollection.Body;
-            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
-            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
+            // 初期選択 (ConfigManager初期化後)
+            SetInitialSelection();
         }
 
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private void SetInitialSelection()
         {
             if (body_listBox.Items.Count != 0)
+            {
                 body_listBox.SelectedIndex = 0;
+            }
             if (Eyes_listBox.Items.Count != 0)
+            {
                 Eyes_listBox.SelectedIndex = 0;
+            }
             if (Audio_listBox.Items.Count != 0)
+            {
                 Audio_listBox.SelectedIndex = 0;
+            }
         }
 
         // UIイベントハンドラ
@@ -200,12 +207,11 @@ namespace Lip_Sync_Generator_2
         private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
         {
             _configManager.LoadPreset(_configManager.FileCollection);
-            if (body_listBox.Items.Count != 0)
-                body_listBox.SelectedIndex = 0;
-            if (Eyes_listBox.Items.Count != 0)
-                Eyes_listBox.SelectedIndex = 0;
-            if (Audio_listBox.Items.Count != 0)
-                Audio_listBox.SelectedIndex = 0;
+            // ItemsSource を設定し直す
+            body_listBox.ItemsSource = _configManager.FileCollection.Body;
+            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
+            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
+            SetInitialSelection();
         }
 
         private void Save_preset_Button_Click(object sender, RoutedEventArgs e)
@@ -291,5 +297,6 @@ namespace Lip_Sync_Generator_2
         {
             BlinkFrequency_TextBlock.Text = BlinkFrequency_Slider.Value.ToString("f2");
         }
+
     }
 }

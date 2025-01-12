@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 using System.Windows.Media;
 
@@ -102,6 +103,7 @@ namespace Lip_Sync_Generator_2
             public event PropertyChangedEventHandler? PropertyChanged;
             private void OnPropertyChanged(string propertyName)
             {
+                Debug.WriteLine($"PropertyChanged: {propertyName}"); // デバッグ出力
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
 
@@ -117,7 +119,6 @@ namespace Lip_Sync_Generator_2
                 _audioFiles.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Audio));
                 _bodyFiles.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Body));
                 _eyesFiles.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Eyes));
-
             }
             [JsonPropertyName("Audio")]
             public FileList Audio
@@ -144,19 +145,15 @@ namespace Lip_Sync_Generator_2
         {
             public FileList() : base()
             {
-                /*
-                Add(new FileName("file1", "path1"));
-                Add(new FileName("file2", "path2"));
-                Add(new FileName("file3", "path3"));
-                Add(new FileName("file4", "path4"));
-                */
+
             }
         }
 
-        public class FileName
+        public class FileName : INotifyPropertyChanged
         {
             private string _fileName;
             private string _filePath;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
             public FileName(string name, string path)
             {
@@ -167,14 +164,20 @@ namespace Lip_Sync_Generator_2
             public string Name
             {
                 get { return _fileName; }
-
+                set { _fileName = value; OnPropertyChanged(nameof(Name)); }
             }
             [JsonPropertyName("Path")]
             public string Path
             {
                 get { return _filePath; }
-
+                set { _filePath = value; OnPropertyChanged(nameof(Path)); }
             }
+
+            protected virtual void OnPropertyChanged(string propertyName)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+
         }
 
     }
