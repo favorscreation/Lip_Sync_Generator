@@ -3,120 +3,220 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Lip_Sync_Generator_2" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
-        mc:Ignorable="d" Height="800" Width="1050" Loaded="Window_Loaded" MinHeight="800" MinWidth="1050" Title="Lip Sync Generator">
+        xmlns:local="clr-namespace:Lip_Sync_Generator_2"
+        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        mc:Ignorable="d" Height="850" Width="1050" Loaded="Window_Loaded" MinHeight="850" MinWidth="1000"
+        Title="Lip Sync Generator">
 
     <Window.Resources>
         <ControlTemplate x:Key="buttonTemplate" TargetType="Button">
             <Border x:Name="Border" Background="DarkGray" CornerRadius="5" BorderThickness="0">
                 <VisualStateManager.VisualStateGroups>
                     <VisualStateGroup x:Name="CommonStates">
-                        <VisualState x:Name="Normal"/>
+                        <VisualState x:Name="Normal" />
                         <VisualState x:Name="MouseOver">
                             <Storyboard>
-                                <ColorAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="DeepSkyBlue" Duration="0:0:0.1"/>
+                                <ColorAnimation Storyboard.TargetName="Border"
+                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                To="DeepSkyBlue" Duration="0:0:0.1" />
                             </Storyboard>
                         </VisualState>
                         <VisualState x:Name="Pressed">
                             <Storyboard>
-                                <ColorAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="Orange" Duration="0"/>
+                                <ColorAnimation Storyboard.TargetName="Border"
+                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                To="Orange" Duration="0" />
                             </Storyboard>
                         </VisualState>
                         <VisualStateGroup.Transitions>
-                            <VisualTransition From="Pressed" GeneratedDuration="0:0:0.3"/>
-                            <VisualTransition From="MouseOver" To="Normal" GeneratedDuration="0:0:0.2"/>
+                            <VisualTransition From="Pressed" GeneratedDuration="0:0:0.3" />
+                            <VisualTransition From="MouseOver" To="Normal" GeneratedDuration="0:0:0.2" />
                         </VisualStateGroup.Transitions>
                     </VisualStateGroup>
                 </VisualStateManager.VisualStateGroups>
-                <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"
+                                  HorizontalAlignment="Center" />
             </Border>
         </ControlTemplate>
     </Window.Resources>
-
-
     <Grid>
         <Grid.Background>
-            <ImageBrush Opacity="0.12" Stretch="UniformToFill" TileMode="Tile" ImageSource="pack://application:,,,/Resources/MetalPlates006_2K-PNG_Color.jpeg"/>
+            <ImageBrush Opacity="0.12" Stretch="UniformToFill" TileMode="Tile"
+                        ImageSource="pack://application:,,,/Resources/MetalPlates006_2K-PNG_Color.jpeg" />
         </Grid.Background>
         <StackPanel Height="26" VerticalAlignment="Top">
             <Menu Background="{x:Null}" Height="25">
-                <MenuItem Header="MENU" Height="25" FontSize="14" FontWeight="Bold">
-                    <MenuItem x:Name="read_preset_Button" Header="プリセット読み込み" Click="Load_preset_Button_Click"/>
-                    <MenuItem x:Name="save_preset_Button" Header="プリセット保存" Click="Save_preset_Button_Click"/>
-                    <MenuItem x:Name="outputs_dir_Button" Header="保存フォルダを開く" Click="Outputs_dir_Button_Click"/>
+                <MenuItem Header="メニュー" Height="25" FontSize="14" FontWeight="Bold">
+                    <MenuItem x:Name="read_preset_Button" Header="プリセット読み込み" Click="Load_preset_Button_Click" />
+                    <MenuItem x:Name="save_preset_Button" Header="プリセット保存" Click="Save_preset_Button_Click" />
+                    <MenuItem x:Name="outputs_dir_Button" Header="保存フォルダを開く" Click="Outputs_dir_Button_Click" />
                 </MenuItem>
             </Menu>
         </StackPanel>
-
-
-        <ListBox x:Name="body_listBox" d:ItemsSource="{Binding}" Margin="515,51,0,0" HorizontalAlignment="Left" Width="250" Height="210" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Body_listBox_SelectionChanged">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Name}"/>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-        <Button x:Name="UpButton_main" Template="{StaticResource buttonTemplate}" Content="↑" HorizontalAlignment="Left" Margin="655,266,0,0" VerticalAlignment="Top" Width="50" Click="UpButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="DownButton_main" Template="{StaticResource buttonTemplate}" Content="↓" HorizontalAlignment="Left" Margin="711,266,0,0" VerticalAlignment="Top" Width="50" Click="DownButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
-        <ListBox x:Name="Eyes_listBox" d:ItemsSource="{Binding}" Margin="515,316,0,0" HorizontalAlignment="Left" Width="250" Height="210" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Eye_listBox_SelectionChanged">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Name}"/>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-        <Button x:Name="UpButton_eye" Template="{StaticResource buttonTemplate}" Content="↑" HorizontalAlignment="Left" Margin="658,531,0,0" VerticalAlignment="Top" Width="50" Click="UpButton_Attach1_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="DownButton_eye" Template="{StaticResource buttonTemplate}" Content="↓" HorizontalAlignment="Left" Margin="712,531,0,0" VerticalAlignment="Top" Width="50" Click="DownButton_Attach1_Click" RenderTransformOrigin="0.5,0.5" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"></Button>
-        <Border BorderBrush="Black" Width="500" Height="500" BorderThickness="1,1,1,1" Margin="10,51,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Background="White">
-            <Grid>
-                <Image x:Name="BodyImage" Source="{Binding}"/>
-                <Image x:Name="EyeImage" Source="{Binding}"/>
-            </Grid>
-        </Border>
-        <TextBlock HorizontalAlignment="Left" Margin="515,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Text="Body"/><Run Language="ja-jp" Text="(PNG)"/></TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="519,295,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Text="Eyes"/><Run Language="ja-jp" Text="(PNG)"/></TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="10,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"><Run Language="ja-jp" Text="Preview"/></TextBlock>
-        <ListBox x:Name="Audio_listBox" d:ItemsSource="{Binding}" Margin="771,51,0,0" HorizontalAlignment="Left" Width="250" Height="210" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop" SelectionChanged="Audio_listBox_SelectionChanged" SelectionMode="Extended">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Grid.Column="2" Text="{Binding Name}" />
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-        <TextBlock HorizontalAlignment="Left" Margin="771,31,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363" RenderTransformOrigin="0.634,-1.689" Text="Audio"/>
-        <Border BorderBrush="Black" BorderThickness="1" HorizontalAlignment="Left" Margin="10,556,0,41" Width="759" >
-            <lvc:CartesianChart x:Name="audioChart" Hoverable="False" Background="White"  />
-        </Border>
-        <Button x:Name="Run_Button" Template="{StaticResource buttonTemplate}" Content="RUN" Margin="774,0,10,41" Height="64" VerticalAlignment="Bottom" Click="Run_Button_Click" Foreground="White" FontSize="20"/>
-        <TextBox x:Name="Notice_TextBox"  Margin="10,0,10,10" TextWrapping="Wrap" Text="TextBox" Height="18" VerticalAlignment="Bottom"/>
-        <Button x:Name="delete_main_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="561,266,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_main_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="delete_eyes_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="564,531,0,0" VerticalAlignment="Top" Width="89" FontFamily="Arial" Click="Delete_eyes_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <Grid Margin="780,358,0,0" HorizontalAlignment="Left" Width="254" Height="239" VerticalAlignment="Top" RenderTransformOrigin="0.527,1.193">
+        <Grid Margin="10,30,10,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock x:Name="TextBox1" HorizontalAlignment="Left" Margin="0,9,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox2" HorizontalAlignment="Left" Margin="0,30,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox3" HorizontalAlignment="Left" Margin="0,51,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox4" HorizontalAlignment="Left" Margin="0,72,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox5" HorizontalAlignment="Left" Margin="0,91,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox6" HorizontalAlignment="Left" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Center" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox7" HorizontalAlignment="Left" Margin="0,133,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox8" HorizontalAlignment="Left" Margin="0,154,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-            <TextBlock x:Name="TextBox9" HorizontalAlignment="Left" Margin="0,175,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Height="16" Width="257"/>
-        </Grid>
-        <Button x:Name="delete_audio_Button" Template="{StaticResource buttonTemplate}" Content="delete" HorizontalAlignment="Left" Margin="821,266,0,0" VerticalAlignment="Top" Width="88" FontFamily="Arial" Click="Delete_audio_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <Button x:Name="Play_Button" Template="{StaticResource buttonTemplate}" Content="Play / Stop" HorizontalAlignment="Left" Margin="915,266,0,0" VerticalAlignment="Top" Width="104" FontFamily="Arial" Click="Play_Button_Click" Height="18" Foreground="White" FontSize="14"/>
-        <CheckBox x:Name="AlphaVideo_CheckBox" Content="透過動画も出力する（ファイルサイズ大）" Margin="774,0,0,110" RenderTransformOrigin="-1.099,0.268" FontSize="14" HorizontalAlignment="Left" Width="252" Height="18" VerticalAlignment="Bottom" IsChecked="False" Unchecked="AlphaVideo_CheckBox_Unchecked" Checked="AlphaVideo_CheckBox_Checked"/>
-        <Grid Height="50" Margin="774,303,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Width="247">
-            <Grid.Background>
-                <SolidColorBrush Color="White" Opacity="0.5"/>
-            </Grid.Background>
-            <Slider x:Name="LipSync_th_Slider" HorizontalAlignment="Left" Margin="10,25,0,0" VerticalAlignment="Top" Width="196" Maximum="5" ValueChanged="LipSync_th_Slider_ValueChanged"/>
-            <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top" Width="116" Margin="10,5,0,0"><Run Language="ja-jp" Text="LipSync Threshold"/></TextBlock>
-            <TextBlock x:Name="LipSync_th_TextBlock" HorizontalAlignment="Left" Margin="211,25,0,0" TextWrapping="Wrap" Text="Text" VerticalAlignment="Top"/>
-        </Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="500"/>
+                <RowDefinition Height="Auto" MinHeight="200" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
+            <TextBlock Grid.Row="0" Grid.Column="0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363"  ><Run Language="ja-jp" Text="プレビュー"/></TextBlock>
+            <Border Grid.Row="1" Grid.Column="0"  BorderBrush="Black" BorderThickness="1,1,1,1"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="White" >
+                <Viewbox Stretch="Uniform"  >
+                    <Grid Width="400" Height="400"  >
+                        <Image x:Name="BodyImage"   VerticalAlignment="Stretch" HorizontalAlignment="Stretch"/>
+                        <Image x:Name="EyeImage"  VerticalAlignment="Stretch"  HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </Viewbox>
+            </Border>
+
+            <Border Grid.Row="2" Grid.Column="0"  BorderBrush="Black" BorderThickness="1" >
+                <lvc:CartesianChart x:Name="audioChart" Hoverable="False" Background="White"  />
+            </Border>
+
+            <ScrollViewer Grid.Row="3" Grid.Column="0"  VerticalScrollBarVisibility="Auto" MaxHeight="150" >
+                <TextBlock x:Name="Notice_TextBlock"  TextWrapping="Wrap" Text="通知領域" Height="auto" />
+            </ScrollViewer>
+
+            <TabControl Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Width="300" >
+                <TabItem Header="画像設定">
+                    <StackPanel>
+                        <TextBlock  TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363" Margin="0,0,0,5"><Run Text="Body"/><Run Language="ja-jp" Text="(PNG)"/></TextBlock>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border x:Name="BodyDropBorder" BorderBrush="Gray" BorderThickness="1"  Grid.Row="1" Width="250" Height="210" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop">
+                                <Grid>
+                                    <TextBlock x:Name="BodyDropText" Text="ここにBody PNGをドラッグ＆ドロップ" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <ListBox x:Name="body_listBox"  Width="250" Height="210" VerticalAlignment="Top" SelectionChanged="Body_listBox_SelectionChanged">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+
+                            <StackPanel  Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
+                                <Button x:Name="delete_main_Button" Template="{StaticResource buttonTemplate}" Content="削除" Width="89" FontFamily="Arial" Click="Delete_main_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+                                <Button x:Name="UpButton_main" Template="{StaticResource buttonTemplate}" Content="上へ" Width="50" Click="UpButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
+                                <Button x:Name="DownButton_main" Template="{StaticResource buttonTemplate}" Content="下へ" Width="50" Click="DownButton_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock  TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363" Margin="0,10,0,5"><Run Text="Eyes"/><Run Language="ja-jp" Text="(PNG)"/></TextBlock>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border x:Name="EyesDropBorder" BorderBrush="Gray" BorderThickness="1"  Grid.Row="1" Width="250" Height="210" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop">
+                                <Grid>
+                                    <TextBlock x:Name="EyesDropText" Text="ここにEyes PNGをドラッグ＆ドロップ" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <ListBox x:Name="Eyes_listBox"  Width="250" Height="210" VerticalAlignment="Top" SelectionChanged="Eye_listBox_SelectionChanged">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
+                                <Button x:Name="delete_eyes_Button" Template="{StaticResource buttonTemplate}" Content="削除" Width="89" FontFamily="Arial" Click="Delete_eyes_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+                                <Button x:Name="UpButton_eye" Template="{StaticResource buttonTemplate}" Content="上へ" Width="50" Click="UpButton_Attach1_Click" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"/>
+                                <Button x:Name="DownButton_eye" Template="{StaticResource buttonTemplate}" Content="下へ" Width="50" Click="DownButton_Attach1_Click" RenderTransformOrigin="0.5,0.5" FontFamily="Arial Black" FontWeight="Bold" Height="18" Foreground="White" FontSize="14"></Button>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="音声設定">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Top" Foreground="#FF6B6363" RenderTransformOrigin="0.634,-1.689" Text="Audio"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border x:Name="AudioDropBorder" BorderBrush="Gray" BorderThickness="1"  Grid.Row="1" Width="250" Height="210" VerticalAlignment="Top" AllowDrop="True" DragOver="Drop_box_DragOver" Drop="drop_box_Drop">
+                                <Grid>
+                                    <TextBlock x:Name="AudioDropText" Text="ここにAudioファイルをドラッグ＆ドロップ" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <ListBox x:Name="Audio_listBox" Width="250" Height="210" VerticalAlignment="Top" SelectionChanged="Audio_listBox_SelectionChanged" SelectionMode="Extended">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock  Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+                            <StackPanel Orientation="Horizontal"  Grid.Row="2" HorizontalAlignment="Left">
+                                <Button x:Name="delete_audio_Button" Template="{StaticResource buttonTemplate}" Content="削除" Width="88" FontFamily="Arial" Click="Delete_audio_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+                                <Button x:Name="Play_Button" Template="{StaticResource buttonTemplate}" Content="Play / Stop" Width="104" FontFamily="Arial" Click="Play_Button_Click" Height="18" Foreground="White" FontSize="14"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="その他設定">
+                    <StackPanel>
+                        <GroupBox Header="リップシンク設定">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top"
+                                Width="116" Margin="10,5,0,0"><Run Language="ja-jp" Text="LipSync Threshold" /></TextBlock>
+                                <Slider x:Name="LipSync_th_Slider" HorizontalAlignment="Left" Margin="10,25,0,0"
+                             VerticalAlignment="Top" Width="196" Maximum="5"
+                             Value="{Binding lipSync_threshold}"
+                             ValueChanged="LipSync_th_Slider_ValueChanged" />
+                                <TextBlock x:Name="LipSync_th_TextBlock" HorizontalAlignment="Left" Margin="211,25,0,0"
+                                TextWrapping="Wrap" Text="{Binding Value, ElementName=LipSync_th_Slider, StringFormat=F1}"
+                                VerticalAlignment="Top" />
+                            </Grid>
+                        </GroupBox>
+                        <GroupBox Header="まばたき設定">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top"
+                                Width="116" Margin="10,5,0,0"><Run Language="ja-jp" Text="Blink Frequency" /></TextBlock>
+                                <Slider x:Name="BlinkFrequency_Slider" HorizontalAlignment="Left" Margin="10,25,0,0"
+                             VerticalAlignment="Top" Width="196" Maximum="1"
+                             Value="{Binding blink_frequency}"
+                             ValueChanged="BlinkFrequency_Slider_ValueChanged" />
+                                <TextBlock x:Name="BlinkFrequency_TextBlock" HorizontalAlignment="Left" Margin="211,25,0,0"
+                                TextWrapping="Wrap" Text="{Binding Value, ElementName=BlinkFrequency_Slider, StringFormat=F2}"
+                                VerticalAlignment="Top" />
+                            </Grid>
+                        </GroupBox>
+                        <Grid Margin="0,10,0,0">
+                            <CheckBox x:Name="AlphaVideo_CheckBox" Content="透過動画も出力する（ファイルサイズ大）"
+                           FontSize="14" HorizontalAlignment="Left" Width="252" Height="18" VerticalAlignment="Top"
+                           IsChecked="False" Unchecked="AlphaVideo_CheckBox_Unchecked"
+                           Checked="AlphaVideo_CheckBox_Checked"  />
+                        </Grid>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+
+            <Button Grid.Row="4" Grid.Column="1" x:Name="Run_Button" Template="{StaticResource buttonTemplate}" Content="実行" Height="40" VerticalAlignment="Center" Click="Run_Button_Click" Foreground="White" FontSize="20"   />
+
+        </Grid>
     </Grid>
 </Window>
-    

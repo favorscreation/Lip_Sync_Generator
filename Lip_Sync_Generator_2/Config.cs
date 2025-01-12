@@ -1,85 +1,141 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Text.Json.Serialization;
+using System.Windows.Media;
 
 namespace Lip_Sync_Generator_2
 {
     public class Config
     {
-        public class Values
+        public class Values : INotifyPropertyChanged
         {
-            // 文字列型
+            public event PropertyChangedEventHandler? PropertyChanged;
+            private void OnPropertyChanged(string propertyName)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+
+            private float _framerate;
             [JsonPropertyName("framerate")]
-            public float framerate { get; set; }
+            public float framerate
+            {
+                get { return _framerate; }
+                set { _framerate = value; OnPropertyChanged(nameof(framerate)); }
+            }
 
+            private int _average_samples;
             [JsonPropertyName("average samples")]
-            public int average_samples { get; set; }
+            public int average_samples
+            {
+                get { return _average_samples; }
+                set { _average_samples = value; OnPropertyChanged(nameof(average_samples)); }
+            }
 
+            private float _sample_scale;
             [JsonPropertyName("sample scale")]
-            public float sample_scale { get; set; }
+            public float sample_scale
+            {
+                get { return _sample_scale; }
+                set { _sample_scale = value; OnPropertyChanged(nameof(sample_scale)); }
+            }
 
+            private float _lipSync_threshold;
             [JsonPropertyName("lip sync threshold")]
-            public float lipSync_threshold { get; set; }
+            public float lipSync_threshold
+            {
+                get { return _lipSync_threshold; }
+                set { _lipSync_threshold = value; OnPropertyChanged(nameof(lipSync_threshold)); }
+            }
 
-            [JsonPropertyName("blink intervalFrame")]
-            public int blink_intervalFrame { get; set; }
-
-            [JsonPropertyName("blink intervalRandomFrame")]
-            public int blink_interval_randomFrame { get; set; }
-
+            private Color _background;
             [JsonPropertyName("BG_Color")]
-            public int[] background { get; set; }
+            public Color background
+            {
+                get { return _background; }
+                set { _background = value; OnPropertyChanged(nameof(background)); }
+            }
 
+            private float _similarity;
             [JsonPropertyName("similarity")]
-            public float similarity { get; set; }
+            public float similarity
+            {
+                get { return _similarity; }
+                set { _similarity = value; OnPropertyChanged(nameof(similarity)); }
+            }
 
+
+            private float _blend;
             [JsonPropertyName("blend")]
-            public float blend { get; set; }
+            public float blend
+            {
+                get { return _blend; }
+                set { _blend = value; OnPropertyChanged(nameof(blend)); }
+            }
 
-            public Values() : base()
+
+            private float _blink_frequency;
+            [JsonPropertyName("blink frequency")]
+            public float blink_frequency
+            {
+                get { return _blink_frequency; }
+                set { _blink_frequency = value; OnPropertyChanged(nameof(blink_frequency)); }
+            }
+
+
+            public Values()
             {
                 framerate = 24;
                 average_samples = 1000;
                 sample_scale = 100;
                 lipSync_threshold = 2;
-                blink_intervalFrame = 72;
-                blink_interval_randomFrame = 24;
-                background = [0, 0, 255];
+                background = Colors.Blue;
                 similarity = 0.2f;
                 blend = 0.2f;
+                blink_frequency = 0.1f;
             }
         }
 
-        public class FileCollection
+        public class FileCollection : INotifyPropertyChanged
         {
-            FileList audioFiles;
-            FileList bodyFiles;
-            FileList eyesFiles;
-
-            public FileCollection() : base()
+            public event PropertyChangedEventHandler? PropertyChanged;
+            private void OnPropertyChanged(string propertyName)
             {
-                audioFiles = new FileList();
-                bodyFiles = new FileList();
-                eyesFiles = new FileList();
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
 
+            private FileList _audioFiles;
+            private FileList _bodyFiles;
+            private FileList _eyesFiles;
+
+            public FileCollection()
+            {
+                _audioFiles = new FileList();
+                _bodyFiles = new FileList();
+                _eyesFiles = new FileList();
+                _audioFiles.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Audio));
+                _bodyFiles.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Body));
+                _eyesFiles.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Eyes));
+
+            }
+            [JsonPropertyName("Audio")]
             public FileList Audio
             {
-                get { return audioFiles; }
-                set { audioFiles = (FileList)value; }
+                get { return _audioFiles; }
+                set { _audioFiles = value; OnPropertyChanged(nameof(Audio)); }
             }
-
+            [JsonPropertyName("Body")]
             public FileList Body
             {
-                get { return bodyFiles; }
-                set { bodyFiles = (FileList)value; }
+                get { return _bodyFiles; }
+                set { _bodyFiles = value; OnPropertyChanged(nameof(Body)); }
             }
-
+            [JsonPropertyName("Eyes")]
             public FileList Eyes
             {
-                get { return eyesFiles; }
-                set { eyesFiles = (FileList)value; }
+                get { return _eyesFiles; }
+                set { _eyesFiles = value; OnPropertyChanged(nameof(Eyes)); }
             }
         }
 
@@ -99,25 +155,25 @@ namespace Lip_Sync_Generator_2
 
         public class FileName
         {
-            private string fileName;
-            private string filePath;
+            private string _fileName;
+            private string _filePath;
 
             public FileName(string name, string path)
             {
-                this.fileName = name;
-                this.filePath = path;
+                _fileName = name;
+                _filePath = path;
             }
-
+            [JsonPropertyName("Name")]
             public string Name
             {
-                get { return fileName; }
-                set { fileName = value; }
-            }
+                get { return _fileName; }
 
+            }
+            [JsonPropertyName("Path")]
             public string Path
             {
-                get { return filePath; }
-                set { filePath = value; }
+                get { return _filePath; }
+
             }
         }
 
