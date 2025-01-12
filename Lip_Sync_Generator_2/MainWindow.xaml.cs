@@ -1,182 +1,69 @@
-﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.IO;
 using Path = System.IO.Path;
-using FFMpegCore;
 using NAudio.Wave;
 using LiveCharts;
 using LiveCharts.Wpf;
-using LiveCharts.Defaults;
-using OpenCvSharp;
-using Window = System.Windows.Window;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Win32;
-using System.Security.Cryptography;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
-using static Lip_Sync_Generator_2.Config;
-using System.Drawing;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Lip_Sync_Generator_2
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        static string CurrentDir = System.IO.Directory.GetCurrentDirectory();
-        Config.Values config = new Config.Values();
-        public Config.FileCollection fileCollection = new Config.FileCollection();
-
-        string ffmpegDir = CurrentDir + "\\ffmpeg";
-
+        private LipSyncProcessor _lipSyncProcessor;
+        private ConfigManager _configManager;
         public MainWindow()
         {
             InitializeComponent();
+            // ConfigManager の初期化
+            _configManager = new ConfigManager();
+            // 設定をUIに反映
+            this.DataContext = _configManager.Config;
 
-            //ffmpegのパスを通す
-            GlobalFFOptions.Configure(options => options.BinaryFolder = ffmpegDir);
+            // LipSyncProcessor の初期化
+            _lipSyncProcessor = new LipSyncProcessor(_configManager);
 
-            Encoding enc = Encoding.GetEncoding("utf-8");
-
-            config = new Config.Values();
-
-            string config_path = @"config\config.json";
-            string str = "";
-
-            if (File.Exists(@"config\config.json"))
-                str = new StreamReader(config_path, enc).ReadToEnd();
-
-            //configフォルダがなければ作成
-            if (Directory.Exists("config") == false)
-                Directory.CreateDirectory("config");
-
-            //presetフォルダがなければ作成
-            if (Directory.Exists("preset") == false)
-                Directory.CreateDirectory("preset");
-
-            //presetフォルダがなければ作成
-            if (Directory.Exists("outputs") == false)
-                Directory.CreateDirectory("outputs");
-
-            if (JsonUtil.JsonToConfig(str) == null)
-            {
-                config = new Config.Values();
-                Notice_TextBox.Text = "デフォルト設定が適用されました";
-                //Debug.WriteLine(JsonUtil.ToJson(config));
-
-                //設定ファイル作成
-                using (StreamWriter writer = new StreamWriter(config_path, false, enc))
-                {
-                    writer.WriteLine(JsonUtil.ToJson(config));
-                }
-            }
-            else
-            {
-                config = JsonUtil.JsonToConfig(str)!;
-                Notice_TextBox.Text = "設定(外部ファイル)を読み込みました";
-            }
-
-            TextBox1.Text = "frameRate = " + config!.framerate;
-            TextBox2.Text = "average samples = " + config!.average_samples;
-            TextBox3.Text = "sample scale = " + config!.sample_scale;
-            TextBox4.Text = "smallMouth th = " + config!.smallMouth_th;
-            TextBox5.Text = "bigMouth th = " + config!.bigMouth_th;
-            TextBox6.Text = "blink interval Frame = " + config!.blink_intervalFrame;
-            TextBox7.Text = "blink interval RandomFrame = " + config!.blink_interval_randomFrame;
-            TextBox8.Text = "background Color = [" + config!.background[0] + " , " + config!.background[1] + " , " + config!.background[2] + "]";
-            TextBox9.Text = "similarity = " + config.similarity;
-            TextBox10.Text = "blend = " + config.blend;
+            // UIへのバインド
+            BindData();
         }
+
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            bind();
+            BindData();
         }
 
-        private void UpItem(ListBox listBox, Config.FileList list)
-        {
-            //リストボックスで選択されているインデックス取得
-            int index = listBox.SelectedIndex;
-
-            //一つ上のインデックスが存在しない（-1）場合何もしない
-            if (index - 1 == -1 || index == -1)
-                return;
-
-            //交換先のアイテムをバッファ
-            var buff = list[index - 1];
-
-            //交換実行
-            list[index - 1] = list[index];
-            list[index] = buff;
-
-            //交換後のアイテムを選択
-            listBox.SelectedIndex = index - 1;
-        }
-
-        private void DownItem(ListBox listBox, Config.FileList list)
-        {
-            int index = listBox.SelectedIndex;
-
-            if (index + 1 == list.Count || index == -1)
-                return;
-
-            var buff = list[index + 1];
-            list[index + 1] = list[index];
-            list[index] = buff;
-            listBox.SelectedIndex = index + 1;
-        }
-
+        // UIイベントハンドラ
         private void UpButton_Click(object sender, RoutedEventArgs e)
         {
-            UpItem(body_listBox, fileCollection.Body);
+            _lipSyncProcessor.UpItem(body_listBox, _configManager.FileCollection.Body);
         }
         private void DownButton_Click(object sender, RoutedEventArgs e)
         {
-            DownItem(body_listBox, fileCollection.Body);
+            _lipSyncProcessor.DownItem(body_listBox, _configManager.FileCollection.Body);
         }
 
         private void UpButton_Attach1_Click(object sender, RoutedEventArgs e)
         {
-            UpItem(Eyes_listBox, fileCollection.Eyes);
+            _lipSyncProcessor.UpItem(Eyes_listBox, _configManager.FileCollection.Eyes);
         }
 
         private void DownButton_Attach1_Click(object sender, RoutedEventArgs e)
         {
-            DownItem(Eyes_listBox, fileCollection.Eyes);
+            _lipSyncProcessor.DownItem(Eyes_listBox, _configManager.FileCollection.Eyes);
         }
 
-        //ドロップされたときの動作。ファイルリストに追加する。
-        private void drop_box_Drop(object sender, DragEventArgs e)
-        {
-
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                var fileNames = (string[])e.Data.GetData(DataFormats.FileDrop);
-                foreach (var name in fileNames)
-                {
-                    var itemlist = (Config.FileList)((ListBox)sender).ItemsSource;
-                    itemlist.Add(new Config.FileName(Path.GetFileName(name), name));
-                }
-                ((ListBox)sender).SelectedIndex = 0;
-            }
-        }
-
-        //ファイルドロップ時のカーソル変更
         private void Drop_box_DragOver(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            if (sender is Border && e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 e.Effects = DragDropEffects.All;
             }
@@ -187,16 +74,36 @@ namespace Lip_Sync_Generator_2
             e.Handled = true;
         }
 
+
+        private void drop_box_Drop(object sender, DragEventArgs e)
+        {
+            if (sender == BodyDropBorder)
+            {
+                _lipSyncProcessor.DropFile(body_listBox, e, _configManager.FileCollection);
+            }
+            else if (sender == EyesDropBorder)
+            {
+                _lipSyncProcessor.DropFile(Eyes_listBox, e, _configManager.FileCollection);
+            }
+            else if (sender == AudioDropBorder)
+            {
+                _lipSyncProcessor.DropFile(Audio_listBox, e, _configManager.FileCollection);
+            }
+        }
+
         private void Body_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                if (body_listBox.SelectedIndex != -1)
-                    BodyImage.Source = new BitmapImage(new Uri(fileCollection.Body[body_listBox.SelectedIndex].Path));
+                if (body_listBox.SelectedItem is Config.FileName selectedItem)
+                {
+                    BodyImage.Source = new BitmapImage(new Uri(selectedItem.Path));
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Debug.WriteLine($"Error loading body image: {ex.Message}");
+                Notice_TextBlock.Text = $"Error loading body image: {ex.Message}";
             }
         }
 
@@ -204,542 +111,174 @@ namespace Lip_Sync_Generator_2
         {
             try
             {
-                if (Eyes_listBox.SelectedIndex != -1)
-                    EyeImage.Source = new BitmapImage(new Uri(fileCollection.Eyes[Eyes_listBox.SelectedIndex].Path));
+                if (Eyes_listBox.SelectedItem is Config.FileName selectedItem)
+                {
+                    EyeImage.Source = new BitmapImage(new Uri(selectedItem.Path));
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Debug.WriteLine($"Error loading eye image: {ex.Message}");
+                Notice_TextBlock.Text = $"Error loading eye image: {ex.Message}";
             }
         }
 
-
-        /// <summary>
-        /// 音声のボリュームを解析
-        /// </summary>
-        private List<float> audio_Analyze(string audio_path)
+        private void Audio_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            List<float> averageList = new List<float>();
-
-            AudioFileReader audio_reader;
+            if (Audio_listBox.SelectedItem is not Config.FileName selectedItem)
+            {
+                return;
+            }
             try
             {
-                audio_reader = new AudioFileReader(audio_path);
+                var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
+                DrawingChart(averageList);
             }
             catch (Exception ex)
             {
-                Notice_TextBox.Text = ex.Message;
-                return new List<float>();
+                Debug.WriteLine($"Error analyzing audio: {ex.Message}");
+                Notice_TextBlock.Text = $"Error analyzing audio: {ex.Message}. Please check the selected audio file.";
             }
 
-            float[] samples = new float[audio_reader.Length / audio_reader.BlockAlign * audio_reader.WaveFormat.Channels];
-            audio_reader.Read(samples, 0, samples.Length);
-
-            float time = (float)audio_reader.TotalTime.TotalSeconds;
-
-            config!.average_samples = (int)(samples.Length / time / config.framerate);
-
-
-            //平均化処理
-            for (int i = 0; i < samples.Length; i += config.average_samples)
-            {
-
-                float sum = 0;
-                for (int j = 0; j < config.average_samples; j++)
-                {
-                    //samplesの範囲を超えないようにif
-                    if (i + j >= samples.Length)
-                        break;
-
-                    //絶対値化
-                    sum += Math.Abs(samples[i + j]);
-                }
-                averageList.Add(sum / (float)config.average_samples);
-            }
-
-
-            return averageList;
         }
 
-        List<float> CurrentAverageList = new List<float>();
-
         /// <summary>
-        /// 
+        ///オーディオ波形描画
         /// </summary>
-        private void DrawingChart()
+        private void DrawingChart(List<float> averageList)
         {
             audioChart.Series.Clear(); //描画領域のクリア
-            audioChart.DisableAnimations = true;  //アニメーション禁止
-            audioChart.DataTooltip = null;//ツールチップ無効
-            audioChart.AxisY[0].MinValue = 0;//軸は0からスタート
+            audioChart.DisableAnimations = true;//アニメーション禁止
+            audioChart.DataTooltip = null;    //ツールチップ無効
+            audioChart.AxisY[0].MinValue = 0;  //軸は0からスタート
             audioChart.AxisX[0].MinValue = 0;
 
             //データ作成
-            double[] ys1 = Enumerable.Range(0, CurrentAverageList.Count).Select(i => (double)CurrentAverageList[i] * config!.sample_scale).ToArray();
+            double[] ys1 = Enumerable.Range(0, averageList.Count).Select(i => (double)averageList[i]).ToArray();
 
             LineSeries lineSeries = new LineSeries();
             lineSeries.PointGeometry = null;
             lineSeries.Values = new ChartValues<double>(ys1);
 
-
             audioChart.Series.Add(lineSeries); //シリーズを登録
         }
 
-        private void Audio_listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (fileCollection.Audio.Count == 0)
-                return;
-
-            try
-            {
-                CurrentAverageList = audio_Analyze(fileCollection.Audio[Audio_listBox.SelectedIndex].Path);
-                DrawingChart();
-            }
-            catch (Exception ex)
-            {
-                Notice_TextBox.Text = ex.Message;
-            }
-        }
-
-        Random random = new Random();
-
-        /// <summary>
-        /// 仮の関数、将来的に4枚以上に対応
-        /// </summary>
-        /// <param name="audio_path"></param>
-        private void Create(string audio_path)
-        {
-            List<float> averageListCopy = audio_Analyze(audio_path);
-
-            string pic_path1 = "";
-            string pic_path2 = "";
-            string pic_path3 = "";
-            string eye_path1 = "";
-            string eye_path2 = "";
-            string eye_path3 = "";
-            bool eye_exist = true;
-
-            var rb = config.background[0];
-            var gb = config.background[1];
-            var bb = config.background[2];
-
-            pic_path1 = fileCollection.Body[0].Path;
-            pic_path2 = fileCollection.Body[1].Path;
-            pic_path3 = fileCollection.Body[1].Path;
-            if (fileCollection.Body.Count > 2)
-                pic_path3 = fileCollection.Body[2].Path;
-
-            if (fileCollection.Eyes.Count == 0)
-                eye_exist = false;
-            else
-            {
-                eye_path1 = fileCollection.Eyes[0].Path;
-                eye_path2 = fileCollection.Eyes[1].Path;
-                eye_path3 = fileCollection.Eyes[1].Path;
-                if (fileCollection.Eyes.Count > 2)
-                    eye_path3 = fileCollection.Eyes[2].Path;
-            }
-
-            if (pic_path3 == "")
-            {
-                pic_path3 = pic_path2;
-            }
-            if (eye_path3 == "")
-            {
-                eye_path3 = eye_path2;
-            }
-
-
-            //tempファイル名を生成
-            Guid g = System.Guid.NewGuid();
-            string guid = g.ToString("N").Substring(0, 8);
-            string temp_mov_path = "temp_" + guid + ".mp4";
-
-            string out_path = @"outputs/";
-
-
-            ///メイン画像
-            //アルファチャンネル込みで読み込む
-            Mat input_mat1 = Cv2.ImRead(pic_path1, ImreadModes.Unchanged);
-            Mat input_mat2 = Cv2.ImRead(pic_path2, ImreadModes.Unchanged);
-            Mat input_mat3 = Cv2.ImRead(pic_path3, ImreadModes.Unchanged);
-            //透明ピクセルを置換
-            MatFunction.Transparent_replacement(input_mat1, (byte)rb, (byte)gb, (byte)bb);
-            MatFunction.Transparent_replacement(input_mat2, (byte)rb, (byte)gb, (byte)bb);
-            MatFunction.Transparent_replacement(input_mat3, (byte)rb, (byte)gb, (byte)bb);
-            //透明度削除
-            input_mat1 = input_mat1.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_mat2 = input_mat2.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_mat3 = input_mat3.CvtColor(ColorConversionCodes.BGRA2BGR);
-
-
-            //サイズが異なると合成できないため揃える
-            int hight = input_mat1.Height;
-            int width = input_mat1.Width;
-            OpenCvSharp.Size size = new OpenCvSharp.Size(width, hight);
-
-
-            ///目の画像
-            //空の画像を生成
-            Mat input_eye1 = new Mat(size, MatType.CV_8UC4);
-            Mat input_eye2 = new Mat(size, MatType.CV_8UC4);
-            Mat input_eye3 = new Mat(size, MatType.CV_8UC4);
-
-            //目のファイルが存在するなら
-            if (eye_exist)
-            {
-                input_eye1 = Cv2.ImRead(eye_path1, ImreadModes.Unchanged);
-                input_eye2 = Cv2.ImRead(eye_path2, ImreadModes.Unchanged);
-                input_eye3 = Cv2.ImRead(eye_path3, ImreadModes.Unchanged);
-            }
-
-            //リサイズ
-            input_mat1 = input_mat1.Resize(size);
-            input_mat2 = input_mat2.Resize(size);
-            input_mat3 = input_mat3.Resize(size);
-            input_eye1 = input_eye1.Resize(size);
-            input_eye2 = input_eye2.Resize(size);
-            input_eye3 = input_eye3.Resize(size);
-
-            //透明色を黒に変更
-            MatFunction.Transparent_replacement_ToBlack(input_eye1);
-            MatFunction.Transparent_replacement_ToBlack(input_eye2);
-            MatFunction.Transparent_replacement_ToBlack(input_eye3);
-            //透明度削除
-            input_eye1 = input_eye1.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_eye2 = input_eye2.CvtColor(ColorConversionCodes.BGRA2BGR);
-            input_eye3 = input_eye3.CvtColor(ColorConversionCodes.BGRA2BGR);
-
-
-            VideoWriter vw = new VideoWriter(temp_mov_path, FourCC.MPG4, config!.framerate, size);
-
-
-            //目のまばたき乱数を生成
-            List<int> reserveFrame = new List<int>();
-            for (int i = 0; i < averageListCopy.Count; i++)
-            {
-                if (i % config.blink_intervalFrame == 0 && i != 0)
-                {
-                    reserveFrame.Add(i - random.Next(0, config.blink_interval_randomFrame));
-                }
-            }
-
-            int count = 0;
-
-
-            //背景色を設定 BGR
-            using (var basemat = new Mat(size, MatType.CV_8UC3, new Scalar(bb, gb, rb)))
-            {
-
-                for (int frame = 0; frame < averageListCopy.Count; frame++)
-                {
-                    //進捗表示
-                    if (frame % 10 == 0)
-                        this.Dispatcher.Invoke(() =>
-                        {
-                            Notice_TextBox.Text = ((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
-                        });
-
-
-                    using (var output_mat = basemat.Clone())
-                    {
-
-                        float sens = averageListCopy[frame] * config.sample_scale;
-
-                        if (sens >= config.bigMouth_th)
-                        {
-                            input_mat3.CopyTo(output_mat);   //大きい口
-                        }
-                        else if (sens > config.smallMouth_th && sens < config.bigMouth_th)
-                        {
-                            input_mat2.CopyTo(output_mat);  //中くらいの口
-                        }
-                        else
-                        {
-                            input_mat1.CopyTo(output_mat);   //閉じた口
-                        }
-
-                        //目を合成
-                        if (count < reserveFrame.Count) //配列の範囲外にならないようチェック
-                        {
-
-                            if (frame == reserveFrame[count] + 1)
-                                input_eye2.CopyTo(output_mat, input_eye2);
-
-                            else if (frame == reserveFrame[count] + 2)
-                                input_eye3.CopyTo(output_mat, input_eye3);
-
-                            else if (frame == reserveFrame[count] + 3)
-                            {
-                                input_eye2.CopyTo(output_mat, input_eye2);
-                                count++;
-                            }
-                            else
-                                input_eye1.CopyTo(output_mat, input_eye1);
-                        }
-                        else { input_eye1.CopyTo(output_mat, input_eye1); }
-
-
-                        //フレーム書き出し
-                        //アルファチャンネルを含むとエラーになる
-                        //vw.Write(output_mat.CvtColor(ColorConversionCodes.BGRA2BGR));
-                        vw.Write(output_mat);
-                    }
-                }
-            }
-
-
-            vw.Release();
-            vw.Dispose();
-
-            input_mat1.Dispose();
-            input_mat2.Dispose();
-            input_mat3.Dispose();
-            input_eye1.Dispose();
-            input_eye2.Dispose();
-            input_eye3.Dispose();
-
-            if (!Directory.Exists(out_path))
-                Directory.CreateDirectory(out_path);
-
-            try
-            {
-                string output_path = out_path + Path.GetFileNameWithoutExtension(audio_path) + ".mp4";
-                FFMpeg.ReplaceAudio(temp_mov_path, audio_path, output_path);
-    
-                convert2Transparent(output_path);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
-            }
-            finally
-            {
-                File.Delete(temp_mov_path);
-            }
-        }
-
-        bool AlphaVideo = false;
-        /// <summary>
-        /// 透過動画に変換
-        /// </summary>
-        /// <param name="input_movie"></param>
-        private void convert2Transparent(string input_movie)
-        {
-            if (AlphaVideo)
-                try
-                {
-                    using (Process process = new Process())
-                    {
-                        string outPath = CurrentDir + @"\outputs\" + Path.GetFileNameWithoutExtension(input_movie) + ".mov";
-                        process.StartInfo.FileName = ffmpegDir + "\\ffmpeg.exe";
-                        string bgColor = config.background[0].ToString("x2") + config.background[1].ToString("x2") + config.background[2].ToString("x2");
-
-                        //-y 上書き
-                        process.StartInfo.Arguments = $@"-y -i {input_movie} -vf colorkey={bgColor}:{config.similarity}:{config.blend} -pix_fmt argb -c:v qtrle {outPath}";
-                        process.Start();
-
-                        // コマンド終了まで待機
-                        process.WaitForExit();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex.ToString());
-                }
-                finally
-                {
-                }
-        }
-
-        private async void Run()
-        {
-            Notice_TextBox.Text = "Run";
-            Run_Button.IsEnabled = false;
-            var selectedItems = Audio_listBox.SelectedItems?.ToList<Config.FileName>() ?? new();
-            await Task.Run(() =>
-            {
-                bool done = true;
-                try
-                {
-                    if (selectedItems.Count == 0)
-                    {
-                        MessageBox.Show("ファイルが不足しています。", "Error");
-                        throw new Exception("Item == 0");
-                    }
-                    //スレッド数を8に制限
-                    ParallelOptions option = new ParallelOptions();
-                    option.MaxDegreeOfParallelism = 8;
-
-                    Parallel.ForEach(selectedItems, option, p =>
-                    {
-                        Create(p.Path);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    done = false;
-                    Debug.WriteLine($"{ex.Message}");
-                    this.Dispatcher.Invoke(() =>
-                    {
-                        Notice_TextBox.Text = ex.ToString();
-                    });
-                }
-                finally
-                {
-                    this.Dispatcher.Invoke(() =>
-                    {
-                        Run_Button.IsEnabled = true;
-                    });
-                }
-
-                if (done)
-                    this.Dispatcher.Invoke(() =>
-                    {
-                        Notice_TextBox.Text = "DONE";
-                    });
-
-            });
-        }
-
-        private void Run_Button_Click(object sender, RoutedEventArgs e)
-        {
-            Run();
-        }
 
         private void Delete_main_Button_Click(object sender, RoutedEventArgs e)
         {
-            if (body_listBox.SelectedIndex >= 0)
-                fileCollection.Body.RemoveAt(body_listBox.SelectedIndex);
+            _lipSyncProcessor.DeleteItem(body_listBox, _configManager.FileCollection.Body);
             if (body_listBox.Items.Count == 0)
                 BodyImage.Source = null;
         }
 
         private void Delete_eyes_Button_Click(object sender, RoutedEventArgs e)
         {
-            if (Eyes_listBox.SelectedIndex >= 0)
-                fileCollection.Eyes.RemoveAt(Eyes_listBox.SelectedIndex);
+            _lipSyncProcessor.DeleteItem(Eyes_listBox, _configManager.FileCollection.Eyes);
             if (Eyes_listBox.Items.Count == 0)
                 EyeImage.Source = null;
         }
 
         private void Delete_audio_Button_Click(object sender, RoutedEventArgs e)
         {
-            if (Audio_listBox.SelectedIndex >= 0)
-                fileCollection.Audio.RemoveAt(Audio_listBox.SelectedIndex);
+            _lipSyncProcessor.DeleteItem(Audio_listBox, _configManager.FileCollection.Audio);
         }
 
         private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
         {
-
-            var dialog = new OpenFileDialog();
-            dialog.Filter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
-            dialog.InitialDirectory = CurrentDir + "\\preset";
-
-            var result = dialog.ShowDialog() ?? false;
-
-            // 保存ボタン以外が押下された場合
-            if (!result)
-            {
-                // 終了します。
-                return;
-            }
-            string content = File.ReadAllText(dialog.FileName);
-
-            fileCollection = new Config.FileCollection();
-            bind();
-
-            fileCollection = JsonUtil.JsonToPreset(content)!;
-            bind();
+            _configManager.LoadPreset(_configManager.FileCollection);
+            BindData();
         }
-
-        /// <summary>
-        /// コレクションをコントロールにバインド
-        /// </summary>
-        void bind()
+        void BindData()
         {
-            body_listBox.ItemsSource = fileCollection.Body;
-            Eyes_listBox.ItemsSource = fileCollection.Eyes;
-            Audio_listBox.ItemsSource = fileCollection.Audio;
+            body_listBox.ItemsSource = _configManager.FileCollection.Body;
+            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
+            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
 
             if (body_listBox.Items.Count != 0)
                 body_listBox.SelectedIndex = 0;
-
             if (Eyes_listBox.Items.Count != 0)
                 Eyes_listBox.SelectedIndex = 0;
-
             if (Audio_listBox.Items.Count != 0)
                 Audio_listBox.SelectedIndex = 0;
         }
 
         private void Save_preset_Button_Click(object sender, RoutedEventArgs e)
         {
-            var str = JsonUtil.ToJson(fileCollection);
-
-            var dialog = new SaveFileDialog();
-            dialog.Filter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
-            dialog.InitialDirectory = CurrentDir + "\\preset";
-
-            var result = dialog.ShowDialog() ?? false;
-
-            // 保存ボタン以外が押下された場合
-            if (!result)
-            {
-                // 終了します。
-                return;
-            }
-
-            File.WriteAllText(dialog.FileName, str);
+            _configManager.SavePreset();
         }
 
         private void Outputs_dir_Button_Click(object sender, RoutedEventArgs e)
         {
-            System.Diagnostics.Process.Start("explorer.exe", CurrentDir + "\\outputs");
+            _configManager.OpenOutputsDirectory();
         }
 
-        WaveOutEvent outputDevice = new WaveOutEvent();
         private void Play_Button_Click(object sender, RoutedEventArgs e)
         {
-            if (fileCollection.Audio.Count == 0)
-                return;
-
-            if (outputDevice.PlaybackState == PlaybackState.Playing)
+            if (Audio_listBox.SelectedItem is Config.FileName selectedItem)
             {
-                outputDevice.Stop();
-                return;
+                _lipSyncProcessor.PlayAudio(selectedItem.Path);
             }
-
-
-            var filename = fileCollection.Audio[Audio_listBox.SelectedIndex].Path;
-
-            //オーディオ再生
-            AudioFileReader afr = new AudioFileReader(filename);
-            outputDevice.Init(afr);
-            outputDevice.Play();
+            else
+            {
+                Notice_TextBlock.Text = "オーディオファイルを選択してください。";
+            }
         }
-
 
         private void AlphaVideo_CheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            AlphaVideo = false;
+            _lipSyncProcessor.AlphaVideo = false;
         }
 
         private void AlphaVideo_CheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            AlphaVideo = true;
-        }
-    }
-
-    internal static class Extension
-    {
-        public static List<T> ToList<T>(this System.Collections.IList source)
-        {
-            return source?.Cast<T>().ToList() ?? new List<T>();
+            _lipSyncProcessor.AlphaVideo = true;
         }
 
-        public static T[] ToArray<T>(this System.Collections.IList source)
+        private void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            return source?.Cast<T>().ToArray() ?? Array.Empty<T>();
+            LipSync_th_TextBlock.Text = LipSync_th_Slider.Value.ToString("f1");
+        }
+
+        private async void Run_Button_Click(object sender, RoutedEventArgs e)
+        {
+            Notice_TextBlock.Text = "動画生成を開始します...";
+            Run_Button.IsEnabled = false;
+            var selectedAudioItems = Audio_listBox.SelectedItems?.Cast<Config.FileName>().ToList() ?? new();
+
+            try
+            {
+                await Task.Run(() => _lipSyncProcessor.Run(selectedAudioItems, _configManager.FileCollection, (progress) =>
+                {
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        Notice_TextBlock.Text = progress;
+                    });
+                }));
+
+                this.Dispatcher.Invoke(() =>
+                {
+                    Notice_TextBlock.Text = "動画生成が完了しました。";
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during video generation: {ex.Message}");
+                this.Dispatcher.Invoke(() =>
+                {
+                    Notice_TextBlock.Text = $"動画生成中にエラーが発生しました: {ex.Message}";
+                });
+            }
+            finally
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    Run_Button.IsEnabled = true;
+                });
+            }
+        }
+        private void BlinkFrequency_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            BlinkFrequency_TextBlock.Text = BlinkFrequency_Slider.Value.ToString("f2");
         }
     }
 }
