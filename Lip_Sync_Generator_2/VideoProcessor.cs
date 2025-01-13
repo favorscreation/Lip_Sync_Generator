@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using FFMpegCore;
 using NAudio.Wave;
@@ -136,7 +138,6 @@ namespace Lip_Sync_Generator_2
                     resizedMat = tempMat.Resize(size);
                     _resizedImageCache[item.Path] = resizedMat;
                     inputsMatBody.Add(resizedMat);
-
                 }
             }
 
@@ -193,99 +194,119 @@ namespace Lip_Sync_Generator_2
                         //基準ステップ
                         float step = (float)(averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001);
 
+                        int maxPoolSize = 24;
+                        int concurrentFrameCount = 8;
+                        BlockingCollection<(int frameIndex, byte[] frameData)> frameQueue = new BlockingCollection<(int, byte[])>(maxPoolSize);
+
+                        var tasks = Enumerable.Range(0, concurrentFrameCount)
+                            .Select(_ => Task.Run(() =>
+                            {
+                                foreach (var item in frameQueue.GetConsumingEnumerable())
+                                {
+                                    int frame = item.frameIndex;
+                                    byte[] frameBytes = item.frameData;
+                                    using (MemoryStream ms = new MemoryStream())
+                                    {
+                                        ms.Write(frameBytes, 0, frameBytes.Length);
+                                        byte[] allBytes = ms.ToArray();
+                                        lock (process.StandardInput.BaseStream)
+                                        {
+                                            process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
+                                        }
+                                    }
+                                    if (frame % 10 == 0)
+                                    {
+                                        progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
+                                    }
+
+                                }
+                            })).ToArray();
+
                         for (int frame = 0; frame < averageListCopy.Count; frame++)
                         {
-                            using (MemoryStream ms = new MemoryStream())
+                            // 音量によって表示画像を切り替える
+                            int dispNum = ((int)(averageListCopy[frame] / step));
+                            if (dispNum >= divide)
                             {
-                                // 音量によって表示画像を切り替える
-                                int dispNum = ((int)(averageListCopy[frame] / step));
-                                if (dispNum >= divide)
+                                dispNum = divide - 1;
+                            }
+                            using (var outputMat = baseMat.Clone())
+                            {
+                                //Bodyの画像を合成
+                                using (var bodyMask = inputsMatBody[dispNum].ExtractChannel(3))
                                 {
-                                    dispNum = divide - 1;
+                                    inputsMatBody[dispNum].CopyTo(outputMat, bodyMask);
                                 }
-                                using (var outputMat = baseMat.Clone())
+                                // まばたき処理
+                                _frameCount++;
+                                if (_blinkFrameCount == 0)
                                 {
-                                    //Bodyの画像を合成
-                                    using (var bodyMask = inputsMatBody[dispNum].ExtractChannel(3))
+                                    if (_frameCount % (int)(_configManager.Config.framerate * (1 / _configManager.Config.blink_frequency)) == 0)
                                     {
-                                        inputsMatBody[dispNum].CopyTo(outputMat, bodyMask);
+                                        _blinkFrameCount = 1;
+                                        _nextBlinkFrame = 0;
                                     }
-                                    // まばたき処理
-                                    _frameCount++;
-                                    if (_blinkFrameCount == 0)
+                                }
+
+                                if (eye_exist)
+                                {
+                                    int eyeIndex = 0;
+                                    if (_blinkFrameCount > 0)
                                     {
-                                        if (_frameCount % (int)(_configManager.Config.framerate * (1 / _configManager.Config.blink_frequency)) == 0)
+                                        int phaseLength = inputsMatEyes.Count;
+                                        int normalizedIndex = _nextBlinkFrame % (phaseLength * 2 - 2);
+
+                                        if (normalizedIndex < phaseLength)
+                                            eyeIndex = normalizedIndex;
+                                        else
+                                            eyeIndex = phaseLength - (normalizedIndex - phaseLength) - 2;
+
+                                        if (_nextBlinkFrame >= (inputsMatEyes.Count * 2 - 2))
                                         {
-                                            _blinkFrameCount = 1;
+                                            _blinkFrameCount = 0;
                                             _nextBlinkFrame = 0;
-                                        }
-                                    }
-
-                                    if (eye_exist)
-                                    {
-                                        int eyeIndex = 0;
-                                        if (_blinkFrameCount > 0)
-                                        {
-                                            int phaseLength = inputsMatEyes.Count;
-                                            int normalizedIndex = _nextBlinkFrame % (phaseLength * 2 - 2);
-
-                                            if (normalizedIndex < phaseLength)
-                                                eyeIndex = normalizedIndex;
-                                            else
-                                                eyeIndex = phaseLength - (normalizedIndex - phaseLength) - 2;
-
-                                            if (_nextBlinkFrame >= (inputsMatEyes.Count * 2 - 2))
-                                            {
-                                                _blinkFrameCount = 0;
-                                                _nextBlinkFrame = 0;
-                                            }
-                                            else
-                                            {
-                                                _nextBlinkFrame++;
-                                            }
-                                        }
-
-                                        if (AlphaVideo)
-                                        {
-                                            //目の画像を合成(アルファブレンド)
-                                            TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
                                         }
                                         else
                                         {
-                                            //目の画像を合成(アルファブレンド)しない
-                                            using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
-                                            {
-                                                inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
-                                            }
+                                            _nextBlinkFrame++;
                                         }
                                     }
-                                    // outputMatをBGRからRGBAに変換
-                                    using (Mat rgbaMat = new Mat())
+
+                                    if (AlphaVideo)
                                     {
-                                        Cv2.CvtColor(outputMat, rgbaMat, ColorConversionCodes.BGR2RGBA);
-
-                                        // FFmpegにデータを送信
-                                        byte[] frameBytes = new byte[rgbaMat.Width * rgbaMat.Height * 4];
-
-                                        unsafe
+                                        //目の画像を合成(アルファブレンド)
+                                        TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
+                                    }
+                                    else
+                                    {
+                                        //目の画像を合成(アルファブレンド)しない
+                                        using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
                                         {
-                                            fixed (byte* p = frameBytes)
-                                            {
-                                                Buffer.MemoryCopy(rgbaMat.DataPointer, p, frameBytes.Length, frameBytes.Length);
-                                            }
+                                            inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
                                         }
-                                        ms.Write(frameBytes, 0, frameBytes.Length);
-
-                                        byte[] allBytes = ms.ToArray();
-                                        process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
                                     }
                                 }
-                            }
-                            if (frame % 10 == 0)
-                            {
-                                progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
+                                // outputMatをBGRからRGBAに変換
+                                using (Mat rgbaMat = new Mat())
+                                {
+                                    Cv2.CvtColor(outputMat, rgbaMat, ColorConversionCodes.BGR2RGBA);
+
+                                    // FFmpegにデータを送信
+                                    byte[] frameBytes = new byte[rgbaMat.Width * rgbaMat.Height * 4];
+
+                                    unsafe
+                                    {
+                                        fixed (byte* p = frameBytes)
+                                        {
+                                            Buffer.MemoryCopy(rgbaMat.DataPointer, p, frameBytes.Length, frameBytes.Length);
+                                        }
+                                    }
+                                    frameQueue.Add((frame, frameBytes));
+                                }
                             }
                         }
+                        frameQueue.CompleteAdding();
+                        Task.WaitAll(tasks);
                         process.StandardInput.Close();
                         string error = process.StandardError.ReadToEnd();
                         process.WaitForExit();

@@ -21,24 +21,56 @@ namespace Lip_Sync_Generator_2
         public MainWindow()
         {
             InitializeComponent();
-            // ConfigManager の初期化
-            _configManager = new ConfigManager();
-
-            // UIへのバインド (ConfigManager初期化後)
-            this.DataContext = _configManager.Config;
-            body_listBox.ItemsSource = _configManager.FileCollection.Body;
-            Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
-            Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
-
-            // LipSyncProcessor の初期化
-            _lipSyncProcessor = new LipSyncProcessor(_configManager);
-
-            // 初期選択 (ConfigManager初期化後)
-            SetInitialSelection();
-
-            _thresholdText = new TextBlock { Text = "Threshold", Foreground = Brushes.Red };
-
+            Debug.WriteLine("InitializeComponent() called");
+            this.Loaded += MainWindow_Loaded;
         }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+
+            try
+            {
+                // ConfigManager の初期化
+                _configManager = new ConfigManager();
+                Debug.WriteLine("_configManager initialized");
+
+
+                // UIへのバインド (ConfigManager初期化後)
+                this.DataContext = _configManager.Config;
+                body_listBox.ItemsSource = _configManager.FileCollection.Body;
+                Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
+                Audio_listBox.ItemsSource = _configManager.FileCollection.Audio;
+                Debug.WriteLine("UI bindings initialized");
+
+                // LipSyncProcessor の初期化
+                _lipSyncProcessor = new LipSyncProcessor(_configManager);
+                Debug.WriteLine("_lipSyncProcessor initialized");
+
+                //UI要素の初期化確認
+                if (LipSync_max_sensitivity_Slider == null)
+                    Debug.WriteLine("LipSync_max_sensitivity_Slider is null in MainWindow_Loaded");
+                else
+                    Debug.WriteLine("LipSync_max_sensitivity_Slider is not null in MainWindow_Loaded");
+
+                if (LipSync_max_sensitivity_TextBlock == null)
+                    Debug.WriteLine("LipSync_max_sensitivity_TextBlock is null in MainWindow_Loaded");
+                else
+                    Debug.WriteLine("LipSync_max_sensitivity_TextBlock is not null in MainWindow_Loaded");
+
+                // 初期選択 (ConfigManager初期化後)
+                SetInitialSelection();
+                Debug.WriteLine("Initial Selection set");
+
+                _thresholdText = new TextBlock { Text = "Threshold", Foreground = Brushes.Red };
+                Debug.WriteLine("_thresholdText initialized");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during MainWindow_Loaded: {ex}");
+                MessageBox.Show($"初期化中にエラーが発生しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
 
         private void SetInitialSelection()
         {
@@ -55,7 +87,6 @@ namespace Lip_Sync_Generator_2
                 Audio_listBox.SelectedIndex = 0;
             }
         }
-
         // UIイベントハンドラ
         private void UpButton_Click(object sender, RoutedEventArgs e)
         {
@@ -88,7 +119,6 @@ namespace Lip_Sync_Generator_2
             }
             e.Handled = true;
         }
-
 
         private void drop_box_Drop(object sender, DragEventArgs e)
         {
@@ -175,6 +205,7 @@ namespace Lip_Sync_Generator_2
             audioChart.AxisY[0].MinValue = 0;
             audioChart.AxisX[0].MinValue = 0;
 
+
             double[] ys1 = Enumerable.Range(0, averageList.Count).Select(i => (double)averageList[i]).ToArray();
 
             LineSeries lineSeries = new LineSeries();
@@ -183,12 +214,36 @@ namespace Lip_Sync_Generator_2
 
             audioChart.Series.Add(lineSeries);
 
+            // スレッショルド線の設定
+            double threshold = _configManager.Config.lipSync_threshold;
+            LineSeries thresholdLine = new LineSeries
+            {
+                Values = new ChartValues<double>(Enumerable.Repeat(threshold, averageList.Count)), // 全てのX値で同じY値となるように設定
+                Stroke = Brushes.Red,
+                StrokeThickness = 2,
+                PointGeometry = null, // 点を非表示
+                LineSmoothness = 0, // 線を直線にする
+            };
+            audioChart.Series.Add(thresholdLine);
+
+            // 最大音量線の設定
+            double maxVolume = averageList.Max() * _configManager.Config.lipSync_max_sensitivity;  // 最大音量を計算
+
+            LineSeries maxVolumeLine = new LineSeries
+            {
+                Values = new ChartValues<double>(Enumerable.Repeat(maxVolume, averageList.Count)),
+                Stroke = Brushes.Green, // 最大音量線の色を緑に設定
+                StrokeThickness = 2,
+                PointGeometry = null,
+                LineSmoothness = 0,
+            };
+            audioChart.Series.Add(maxVolumeLine);
         }
 
         private void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             LipSync_th_TextBlock.Text = LipSync_th_Slider.Value.ToString("f1") + "%";
-            _configManager.Config.lipSync_threshold = _configManager.Config.lipSync_threshold_percent / 100 * 5; // スレッショルドを更新
+            _configManager.Config.lipSync_threshold = _configManager.Config.lipSync_threshold_percent / 100 * _configManager.Config.lipSync_threshold_max;
             if (Audio_listBox.SelectedItem is Config.FileName selectedItem)
             {
                 //スライダーの値を変更した場合グラフも再描画
@@ -203,6 +258,27 @@ namespace Lip_Sync_Generator_2
             }
         }
 
+        private void LipSync_max_sensitivity_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (LipSync_max_sensitivity_TextBlock == null)
+            {
+                Debug.WriteLine("LipSync_max_sensitivity_TextBlock is null in ValueChanged");
+                return;
+            }
+            LipSync_max_sensitivity_TextBlock.Text = LipSync_max_sensitivity_Slider.Value.ToString("f1");
+            if (_lipSyncProcessor != null && Audio_listBox.SelectedItem is Config.FileName selectedItem && selectedItem != null && selectedItem.Path != null)
+            {
+                //スライダーの値を変更した場合グラフも再描画
+                Task.Run(() =>
+                {
+                    var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        DrawingChart(averageList);
+                    });
+                });
+            }
+        }
 
         private void Delete_main_Button_Click(object sender, RoutedEventArgs e)
         {
@@ -310,6 +386,7 @@ namespace Lip_Sync_Generator_2
                 });
             }
         }
+
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             base.OnClosing(e);

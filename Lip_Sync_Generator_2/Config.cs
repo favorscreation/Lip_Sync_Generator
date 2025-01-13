@@ -56,6 +56,15 @@ namespace Lip_Sync_Generator_2
                 set { _lipSync_threshold_percent = value; OnPropertyChanged(nameof(lipSync_threshold_percent)); }
             }
 
+            private double _lipSync_threshold_max;
+            [JsonPropertyName("lip sync threshold max")]
+            public double lipSync_threshold_max
+            {
+                get { return _lipSync_threshold_max; }
+                set { _lipSync_threshold_max = value; OnPropertyChanged(nameof(lipSync_threshold_max)); }
+            }
+
+
             private Color _background;
             [JsonPropertyName("BG_Color")]
             public Color background
@@ -88,6 +97,15 @@ namespace Lip_Sync_Generator_2
                 set { _blink_frequency = value; OnPropertyChanged(nameof(blink_frequency)); }
             }
 
+            private double _lipSync_max_sensitivity;
+            [JsonPropertyName("lip sync max sensitivity")]
+            public double lipSync_max_sensitivity
+            {
+                get { return _lipSync_max_sensitivity; }
+                set { _lipSync_max_sensitivity = value; OnPropertyChanged(nameof(lipSync_max_sensitivity)); }
+            }
+
+
             public Values()
             {
                 framerate = 24;
@@ -99,6 +117,8 @@ namespace Lip_Sync_Generator_2
                 similarity = 0.2f;
                 blend = 0.2f;
                 blink_frequency = 0.1f;
+                lipSync_threshold_max = 5;  //最大値を設定
+                lipSync_max_sensitivity = 1.0;  //最大感度を初期設定
             }
         }
 
