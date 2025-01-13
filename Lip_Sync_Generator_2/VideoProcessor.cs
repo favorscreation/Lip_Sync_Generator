@@ -182,7 +182,7 @@ namespace Lip_Sync_Generator_2
                     }
                     using (Process process = new Process())
                     {
-                        process.StartInfo.FileName = ConfigManager.CurrentDir + "\\ffmpeg\\ffmpeg.exe";
+                        process.StartInfo.FileName = _configManager.Config.ffmpegPath; // コンフィグからffmpegパスを取得
                         process.StartInfo.UseShellExecute = false;
                         process.StartInfo.RedirectStandardError = true;
                         process.StartInfo.RedirectStandardInput = true;

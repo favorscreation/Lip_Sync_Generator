@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using Microsoft.Win32;
-using System.Windows.Media;
 
 namespace Lip_Sync_Generator_2
 {
@@ -13,17 +12,16 @@ namespace Lip_Sync_Generator_2
         public static string CurrentDir { get; } = System.IO.Directory.GetCurrentDirectory();
         public Config.Values Config { get; set; }
         public Config.FileCollection FileCollection { get; set; } = new Config.FileCollection();
-        private string _ffmpegDir = CurrentDir + "\\ffmpeg";
+        // private string _ffmpegDir = CurrentDir + "\\ffmpeg"; // 不要になる
         private const string ConfigFilePath = @"config\config.json";
         private const string PresetFileFilter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
         private const string PresetFileExtension = ".json";
         public ConfigManager()
         {
-            //ffmpegのパスを通す
-            FFMpegCore.GlobalFFOptions.Configure(options => options.BinaryFolder = _ffmpegDir);
+            // ffmpegのパスを通す処理は削除
+            // FFMpegCore.GlobalFFOptions.Configure(options => options.BinaryFolder = _ffmpegDir);
 
             Encoding enc = Encoding.GetEncoding("utf-8");
-
             string str = "";
 
             if (File.Exists(ConfigFilePath))
@@ -59,22 +57,10 @@ namespace Lip_Sync_Generator_2
                 Config = JsonUtil.JsonToConfig(str) ?? new Config.Values();  // nullの場合は新しいConfig.Valuesを作成
                 //Notice_TextBox.Text = "設定(外部ファイル)を読み込みました";
             }
-            // ファイルコレクションをロード (設定ファイルが存在しない場合、空のコレクションとなる)
-            string presetStr = "";
 
-            /*  if (File.Exists(@"preset\default.json"))
-                 presetStr = new StreamReader(@"preset\default.json", enc).ReadToEnd();
-
-             if (JsonUtil.JsonToPreset(presetStr) != null)
-             {
-                 FileCollection = JsonUtil.JsonToPreset(presetStr)!;
-             }
-             else
-             {
-                 FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
-             } */
             FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
         }
+
         /// <summary>
         /// プリセットを読み込む
         /// </summary>

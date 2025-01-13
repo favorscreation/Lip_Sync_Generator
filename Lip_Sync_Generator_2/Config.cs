@@ -105,6 +105,14 @@ namespace Lip_Sync_Generator_2
                 set { _lipSync_max_sensitivity = value; OnPropertyChanged(nameof(lipSync_max_sensitivity)); }
             }
 
+            private string _ffmpegPath;
+            [JsonPropertyName("ffmpeg path")]
+            public string ffmpegPath
+            {
+                get { return _ffmpegPath; }
+                set { _ffmpegPath = value; OnPropertyChanged(nameof(ffmpegPath)); }
+            }
+
 
             public Values()
             {
@@ -119,6 +127,7 @@ namespace Lip_Sync_Generator_2
                 blink_frequency = 0.1f;
                 lipSync_threshold_max = 5;  //最大値を設定
                 lipSync_max_sensitivity = 1.0;  //最大感度を初期設定
+                ffmpegPath = System.IO.Directory.GetCurrentDirectory() + "\\ffmpeg\\ffmpeg.exe"; // デフォルト値としてffmpegのパスを設定
             }
         }
 

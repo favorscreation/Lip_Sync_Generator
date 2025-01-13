@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
@@ -11,8 +15,8 @@
       "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\videoprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\configmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\configmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\config.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -21,10 +25,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\jsonutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\jsonutil.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\configmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|solutionrelative:lip_sync_generator_2\\configmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BAEAD2BD-7E55-4C38-AEED-EABF2ECDC953}|Lip_Sync_Generator_2\\Lip_Sync_Generator_2.csproj|d:\\fortia\\documents\\github\\lip_sync_generator\\lip_sync_generator_2\\lipsyncprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -41,24 +41,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "VideoProcessor.cs",
               "DocumentMoniker": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\VideoProcessor.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\VideoProcessor.cs",
               "ToolTip": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\VideoProcessor.cs",
               "RelativeToolTip": "Lip_Sync_Generator_2\\VideoProcessor.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAHIBAAAiAAAAAAAAAA==",
+              "ViewState": "AgIAAF4BAAAAAAAAAAAmwI0BAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-01-12T10:06:34.255Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\MainWindow.xaml",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\MainWindow.xaml",
@@ -70,39 +70,39 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\MainWindow.xaml.cs",
               "ToolTip": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\MainWindow.xaml.cs",
               "RelativeToolTip": "Lip_Sync_Generator_2\\MainWindow.xaml.cs",
-              "ViewState": "AgIAAPAAAAAAAAAAAAAlwAYBAAAMAAAAAAAAAA==",
+              "ViewState": "AgIAAFkBAAAAAAAAAAAMwIsBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-01-12T12:11:54.778Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 3,
               "Title": "ConfigManager.cs",
               "DocumentMoniker": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\ConfigManager.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\ConfigManager.cs",
               "ToolTip": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\ConfigManager.cs",
               "RelativeToolTip": "Lip_Sync_Generator_2\\ConfigManager.cs",
-              "ViewState": "AgIAAIMAAAAAAAAAAAAiwJIAAAAoAAAAAAAAAA==",
+              "ViewState": "AgIAAHwAAAAAAAAAAAAmwKsAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-01-12T03:29:19.203Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "JsonUtil.cs",
               "DocumentMoniker": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\JsonUtil.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\JsonUtil.cs",
               "ToolTip": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\JsonUtil.cs",
               "RelativeToolTip": "Lip_Sync_Generator_2\\JsonUtil.cs",
-              "ViewState": "AgIAABQAAAAAAAAAAADwvxUAAAAeAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-04-30T04:43:09.834Z",
               "EditorCaption": ""
@@ -121,13 +121,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Config.cs",
               "DocumentMoniker": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\Config.cs",
               "RelativeDocumentMoniker": "Lip_Sync_Generator_2\\Config.cs",
               "ToolTip": "D:\\fortia\\Documents\\GitHub\\Lip_Sync_Generator\\Lip_Sync_Generator_2\\Config.cs",
               "RelativeToolTip": "Lip_Sync_Generator_2\\Config.cs",
-              "ViewState": "AgIAAGsAAAAAAAAAAAAAAIYAAAAoAAAAAAAAAA==",
+              "ViewState": "AgIAAKgAAAAAAAAAAAA4wNcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-04-30T06:19:24.521Z",
               "EditorCaption": ""
