@@ -5,8 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using FFMpegCore;
-using NAudio.Wave;
 using OpenCvSharp;
 
 namespace Lip_Sync_Generator_2
@@ -31,10 +29,10 @@ namespace Lip_Sync_Generator_2
         {
             List<float> averageList = new List<float>();
 
-            AudioFileReader audio_reader;
+            NAudio.Wave.AudioFileReader audio_reader;
             try
             {
-                audio_reader = new AudioFileReader(audio_path);
+                audio_reader = new NAudio.Wave.AudioFileReader(audio_path);
             }
             catch (Exception ex)
             {
@@ -121,7 +119,7 @@ namespace Lip_Sync_Generator_2
                     inputsMatBody.Add(resizedMat);
                     continue;
                 }
-                using (var tempMat = Cv2.ImRead(item.Path, ImreadModes.Unchanged))
+                using (var tempMat = Cv2.ImRead(item.Path, OpenCvSharp.ImreadModes.Unchanged))
                 {
 
                     if (checkSize == false)
@@ -151,7 +149,7 @@ namespace Lip_Sync_Generator_2
                     inputsMatEyes.Add(resizedMat);
                     continue;
                 }
-                using (var tempMat = Cv2.ImRead(eyeFiles[i].Path, ImreadModes.Unchanged))
+                using (var tempMat = Cv2.ImRead(eyeFiles[i].Path, OpenCvSharp.ImreadModes.Unchanged))
                 {
                     resizedMat = tempMat.Resize(size);
                     _resizedImageCache[eyeFiles[i].Path] = resizedMat;
@@ -161,24 +159,25 @@ namespace Lip_Sync_Generator_2
 
             try
             {
-                using (var baseMat = new Mat(size, MatType.CV_8UC4))
+                using (var baseMat = new Mat(size, OpenCvSharp.MatType.CV_8UC4))
                 {
                     if (AlphaVideo)
-                        baseMat.SetTo(new Scalar(0, 0, 0, 0));
+                        baseMat.SetTo(new OpenCvSharp.Scalar(0, 0, 0, 0));
                     else
-                        baseMat.SetTo(new Scalar(bb, gb, rb, 255));
+                        baseMat.SetTo(new OpenCvSharp.Scalar(bb, gb, rb, 255));
+
 
                     string ffmpegArgs;
                     if (AlphaVideo)
                     {
                         // 透過動画 (MOV) を出力
-                        ffmpegArgs = $"-y -f rawvideo -pix_fmt rgba -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -i - -c:v png -pix_fmt rgba \"{outputPath}\"";
+                        ffmpegArgs = $"-y -f rawvideo -pix_fmt rgba -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -i - -c:v png -pix_fmt rgba \"{tempMovPath}\"";
                     }
                     else
                     {
                         // カラーキー処理 (MP4) を出力
                         string bgColor = $"{_configManager.Config.background.R:X2}{_configManager.Config.background.G:X2}{_configManager.Config.background.B:X2}";
-                        ffmpegArgs = $"-y -f rawvideo -pix_fmt rgba -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -i - -vf colorkey=0x{bgColor}:{_configManager.Config.similarity}:{_configManager.Config.blend} -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"";
+                        ffmpegArgs = $"-y -f rawvideo -pix_fmt rgba -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -i - -vf colorkey=0x{bgColor}:{_configManager.Config.similarity}:{_configManager.Config.blend} -c:v libx264 -pix_fmt yuv420p \"{tempMovPath}\"";
                     }
                     using (Process process = new Process())
                     {
@@ -274,6 +273,7 @@ namespace Lip_Sync_Generator_2
 
                                     if (AlphaVideo)
                                     {
+<<<<<<< Updated upstream
                                         //目の画像を合成(アルファブレンド)
                                         TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
                                     }
@@ -281,6 +281,14 @@ namespace Lip_Sync_Generator_2
                                     {
                                         //目の画像を合成(アルファブレンド)しない
                                         using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
+=======
+                                        Cv2.CvtColor(outputMat, rgbaMat, OpenCvSharp.ColorConversionCodes.BGR2RGBA);
+
+                                        // FFmpegにデータを送信
+                                        byte[] frameBytes = new byte[rgbaMat.Width * rgbaMat.Height * 4];
+
+                                        unsafe
+>>>>>>> Stashed changes
                                         {
                                             inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
                                         }
@@ -313,13 +321,17 @@ namespace Lip_Sync_Generator_2
                         if (process.ExitCode != 0)
                             throw new Exception("ffmpeg failed:" + error);
                     }
-                    // ReplaceAudioの処理を変更
-                    string tempOutputPath = Path.Combine(outPath, Path.GetFileNameWithoutExtension(audioPath) + "_temp" + (AlphaVideo ? ".mov" : ".mp4"));
-                    if (File.Exists(outputPath))
-                        File.Move(outputPath, tempOutputPath, true);
-                    ReplaceAudio(tempOutputPath, audioPath, outputPath);
-                    File.Delete(tempOutputPath);
 
+
+                    //ReplaceAudioの処理
+                    try
+                    {
+                        ReplaceAudio(tempMovPath, audioPath, outputPath, AlphaVideo);
+                    }
+                    finally
+                    {
+                        File.Delete(tempMovPath); // 一時ファイルを削除
+                    }
                 }
             }
             catch (Exception ex)
@@ -339,20 +351,39 @@ namespace Lip_Sync_Generator_2
         }
 
         /// <summary>
-        /// オーディオの入れ替え
+        /// オーディオの入れ替え (FFmpeg コマンドライン版)
         /// </summary>
-        private void ReplaceAudio(string inputVideoPath, string inputAudioPath, string outputVideoPath)
+        private void ReplaceAudio(string inputVideoPath, string inputAudioPath, string outputVideoPath, bool AlphaVideo)
         {
             try
             {
-                FFMpeg.ReplaceAudio(inputVideoPath, inputAudioPath, outputVideoPath);
+                string ffmpegArgs;
+                if (AlphaVideo)
+                    ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac -map 0:v -map 1:a \"{outputVideoPath}\"";
+                else
+                    ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac  \"{outputVideoPath}\"";
+
+                using (Process process = new Process())
+                {
+                    process.StartInfo.FileName = ConfigManager.CurrentDir + "\\ffmpeg\\ffmpeg.exe";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardError = true;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.Arguments = ffmpegArgs;
+                    process.Start();
+                    string error = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+                    if (process.ExitCode != 0)
+                        throw new Exception("ffmpeg failed:" + error);
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
-                throw new Exception("ReplaceAudio failed", ex);
+                Debug.WriteLine($"Error during audio replacement: {ex.Message}");
+                throw new Exception("Failed to replace audio", ex);
             }
         }
+
 
 
         /// <summary>

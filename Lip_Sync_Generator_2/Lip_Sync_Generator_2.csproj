@@ -16,7 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FFMpegCore" Version="5.1.0" />
     <PackageReference Include="LiveCharts.Wpf.NetCore3" Version="0.9.8" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="OpenCvSharp4.Windows" Version="4.10.0.20241108" />
