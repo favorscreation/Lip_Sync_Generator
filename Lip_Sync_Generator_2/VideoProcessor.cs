@@ -273,7 +273,6 @@ namespace Lip_Sync_Generator_2
 
                                     if (AlphaVideo)
                                     {
-<<<<<<< Updated upstream
                                         //目の画像を合成(アルファブレンド)
                                         TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
                                     }
@@ -281,14 +280,7 @@ namespace Lip_Sync_Generator_2
                                     {
                                         //目の画像を合成(アルファブレンド)しない
                                         using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
-=======
-                                        Cv2.CvtColor(outputMat, rgbaMat, OpenCvSharp.ColorConversionCodes.BGR2RGBA);
 
-                                        // FFmpegにデータを送信
-                                        byte[] frameBytes = new byte[rgbaMat.Width * rgbaMat.Height * 4];
-
-                                        unsafe
->>>>>>> Stashed changes
                                         {
                                             inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
                                         }

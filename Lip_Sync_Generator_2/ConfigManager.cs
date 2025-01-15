@@ -18,12 +18,6 @@ namespace Lip_Sync_Generator_2
         private const string PresetFileExtension = ".json";
         public ConfigManager()
         {
-<<<<<<< Updated upstream
-            // ffmpegのパスを通す処理は削除
-            // FFMpegCore.GlobalFFOptions.Configure(options => options.BinaryFolder = _ffmpegDir);
-
-=======
->>>>>>> Stashed changes
             Encoding enc = Encoding.GetEncoding("utf-8");
             string str = "";
 
