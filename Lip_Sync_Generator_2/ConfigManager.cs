@@ -12,38 +12,39 @@ namespace Lip_Sync_Generator_2
         public static string CurrentDir { get; } = System.IO.Directory.GetCurrentDirectory();
         public Config.Values Config { get; set; }
         public Config.FileCollection FileCollection { get; set; } = new Config.FileCollection();
-        // private string _ffmpegDir = CurrentDir + "\\ffmpeg"; // 不要になる
         private const string ConfigFilePath = @"config\config.json";
         private const string PresetFileFilter = "JSONファイル(*.json)|*.json|全てのファイル(*.*)|*.*";
         private const string PresetFileExtension = ".json";
+
         public ConfigManager()
         {
             Encoding enc = Encoding.GetEncoding("utf-8");
-            string str = "";
+            string configStr = "";
 
-            if (File.Exists(ConfigFilePath))
-                str = new StreamReader(ConfigFilePath, enc).ReadToEnd();
 
-            //configフォルダがなければ作成
-            if (Directory.Exists("config") == false)
+            // configフォルダがなければ作成
+            if (!Directory.Exists("config"))
                 Directory.CreateDirectory("config");
 
-            //presetフォルダがなければ作成
-            if (Directory.Exists("preset") == false)
+            // presetフォルダがなければ作成
+            if (!Directory.Exists("preset"))
                 Directory.CreateDirectory("preset");
 
-            //presetフォルダがなければ作成
-            if (Directory.Exists("outputs") == false)
+            // outputsフォルダがなければ作成
+            if (!Directory.Exists("outputs"))
                 Directory.CreateDirectory("outputs");
 
-            if (JsonUtil.JsonToConfig(str) == null)
+            // 設定ファイル読み込み
+            if (File.Exists(ConfigFilePath))
+                configStr = new StreamReader(ConfigFilePath, enc).ReadToEnd();
+
+            if (JsonUtil.JsonToConfig(configStr) == null)
             {
                 Config = new Config.Values();
                 Config.lipSync_threshold_percent = 40;  // スレッショルドの初期値を設定
-                // Notice_TextBox.Text = "デフォルト設定が適用されました";
-                Debug.WriteLine(JsonUtil.ToJson(Config));
+                Debug.WriteLine("Default config applied");
 
-                //設定ファイル作成
+                // 設定ファイル作成
                 using (StreamWriter writer = new StreamWriter(ConfigFilePath, false, enc))
                 {
                     writer.WriteLine(JsonUtil.ToJson(Config));
@@ -51,17 +52,39 @@ namespace Lip_Sync_Generator_2
             }
             else
             {
-                Config = JsonUtil.JsonToConfig(str) ?? new Config.Values();  // nullの場合は新しいConfig.Valuesを作成
-                //Notice_TextBox.Text = "設定(外部ファイル)を読み込みました";
+                Config = JsonUtil.JsonToConfig(configStr) ?? new Config.Values();  // nullの場合は新しいConfig.Valuesを作成
+                Debug.WriteLine("Config loaded from file");
             }
-
-            FileCollection = new Config.FileCollection(); // 設定ファイルがない場合は、空のコレクションで初期化
         }
 
         /// <summary>
         /// プリセットを読み込む
         /// </summary>
-        public void LoadPreset(Config.FileCollection fileCollection)
+        public void LoadPreset(string filePath)
+        {
+            try
+            {
+                string content = File.ReadAllText(filePath);
+                var loadedCollection = JsonUtil.JsonToPreset(content) ?? new Config.FileCollection();
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    FileCollection.Audio = loadedCollection.Audio;
+                    FileCollection.Body = loadedCollection.Body;
+                    FileCollection.Eyes = loadedCollection.Eyes;
+                });
+                Config.lastPresetPath = filePath;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"プリセットの読み込みに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// プリセットを読み込む
+        /// </summary>
+        public void LoadPreset()
         {
             var dialog = new OpenFileDialog();
             dialog.Filter = PresetFileFilter;
@@ -73,23 +96,7 @@ namespace Lip_Sync_Generator_2
             {
                 return;
             }
-
-            try
-            {
-                string content = File.ReadAllText(dialog.FileName);
-                var loadedCollection = JsonUtil.JsonToPreset(content) ?? new Config.FileCollection();
-
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    FileCollection.Audio = loadedCollection.Audio;
-                    FileCollection.Body = loadedCollection.Body;
-                    FileCollection.Eyes = loadedCollection.Eyes;
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"プリセットの読み込みに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            LoadPreset(dialog.FileName);
         }
 
         /// <summary>
@@ -116,6 +123,7 @@ namespace Lip_Sync_Generator_2
             try
             {
                 File.WriteAllText(dialog.FileName, str);
+                Config.lastPresetPath = dialog.FileName;
             }
             catch (Exception ex)
             {
@@ -140,21 +148,6 @@ namespace Lip_Sync_Generator_2
             catch (Exception ex)
             {
                 Debug.WriteLine($"Config save failed : {ex.Message}");
-                MessageBox.Show($"設定の保存に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-
-            str = JsonUtil.ToJson(FileCollection);
-            try
-            {
-                using (StreamWriter writer = new StreamWriter(@"preset\default.json", false, enc))
-                {
-                    writer.WriteLine(str);
-                }
-                Debug.WriteLine("FileCollection saved automatically.");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"FileCollection save failed : {ex.Message}");
                 MessageBox.Show($"設定の保存に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

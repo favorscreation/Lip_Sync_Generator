@@ -64,7 +64,6 @@ namespace Lip_Sync_Generator_2
                 set { _lipSync_threshold_max = value; OnPropertyChanged(nameof(lipSync_threshold_max)); }
             }
 
-
             private Color _background;
             [JsonPropertyName("BG_Color")]
             public Color background
@@ -105,12 +104,28 @@ namespace Lip_Sync_Generator_2
                 set { _lipSync_max_sensitivity = value; OnPropertyChanged(nameof(lipSync_max_sensitivity)); }
             }
 
+            private bool _loadLastPreset;
+            [JsonPropertyName("load last preset")]
+            public bool loadLastPreset
+            {
+                get { return _loadLastPreset; }
+                set { _loadLastPreset = value; OnPropertyChanged(nameof(loadLastPreset)); }
+            }
+
             private string _ffmpegPath;
             [JsonPropertyName("ffmpeg path")]
             public string ffmpegPath
             {
                 get { return _ffmpegPath; }
                 set { _ffmpegPath = value; OnPropertyChanged(nameof(ffmpegPath)); }
+            }
+
+            private string _lastPresetPath;
+            [JsonPropertyName("last preset path")]
+            public string lastPresetPath
+            {
+                get { return _lastPresetPath; }
+                set { _lastPresetPath = value; OnPropertyChanged(nameof(lastPresetPath)); }
             }
 
 
@@ -128,6 +143,8 @@ namespace Lip_Sync_Generator_2
                 lipSync_threshold_max = 5;  //最大値を設定
                 lipSync_max_sensitivity = 1.0;  //最大感度を初期設定
                 ffmpegPath = System.IO.Directory.GetCurrentDirectory() + "\\ffmpeg\\ffmpeg.exe"; // デフォルト値としてffmpegのパスを設定
+                loadLastPreset = false;
+                lastPresetPath = string.Empty;
             }
         }
 

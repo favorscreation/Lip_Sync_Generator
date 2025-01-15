@@ -329,7 +329,7 @@ namespace Lip_Sync_Generator_2
             catch (Exception ex)
             {
                 Debug.WriteLine(ex);
-                throw new Exception(ex.Message, ex.InnerException); // 必要に応じてカスタム例外を検討
+                throw new Exception(ex.Message, ex.InnerException);
             }
             finally
             {
@@ -389,32 +389,57 @@ namespace Lip_Sync_Generator_2
             {
                 throw new ArgumentException("画像のサイズが異なります。");
             }
+
+            int numPixels = src.Height * src.Width;
+
+            byte[] srcData = new byte[numPixels * 4];
+            byte[] addData = new byte[numPixels * 4];
+
+            // Matからデータをコピー
             unsafe
             {
-                int numPixels = src.Height * src.Width;
-                Parallel.For(0, numPixels, (index) =>
+                fixed (byte* pSrc = srcData)
                 {
-                    byte* src_b = src.DataPointer + index * 4;
-                    byte* add_b = add.DataPointer + index * 4;
+                    Buffer.MemoryCopy(src.DataPointer, pSrc, srcData.Length, srcData.Length);
+                }
+                fixed (byte* pAdd = addData)
+                {
+                    Buffer.MemoryCopy(add.DataPointer, pAdd, addData.Length, addData.Length);
+                }
+            }
 
-                    float alpha = (float)add_b[3] / 255.0f; // 合成する画像のアルファ値を0-1の範囲に変換
+            // 並列処理でアルファブレンド
+            Parallel.For(0, numPixels, (index) =>
+            {
+                int pixelIndex = index * 4;
+                if (pixelIndex + 3 >= addData.Length || pixelIndex >= srcData.Length)
+                {
+                    // インデックスが範囲外の場合、処理をスキップ
+                    return;
+                }
 
-                    if (alpha > 0)
-                    {
-                        // アルファブレンド処理
-                        src_b[0] = (byte)((add_b[0] * alpha) + (src_b[0] * (1 - alpha))); // B
-                        src_b[1] = (byte)((add_b[1] * alpha) + (src_b[1] * (1 - alpha))); // G
-                        src_b[2] = (byte)((add_b[2] * alpha) + (src_b[2] * (1 - alpha))); // R
+                float alpha = (float)addData[pixelIndex + 3] / 255.0f; // 合成する画像のアルファ値を0-1の範囲に変換
 
-                        // アルファ値を維持（合成後のアルファ値は変更しない）
-                        src_b[3] = (byte)Math.Min(255, (add_b[3] + src_b[3]));
+                if (alpha > 0)
+                {
+                    // アルファブレンド処理
+                    srcData[pixelIndex] = (byte)((addData[pixelIndex] * alpha) + (srcData[pixelIndex] * (1 - alpha))); // B
+                    srcData[pixelIndex + 1] = (byte)((addData[pixelIndex + 1] * alpha) + (srcData[pixelIndex + 1] * (1 - alpha))); // G
+                    srcData[pixelIndex + 2] = (byte)((addData[pixelIndex + 2] * alpha) + (srcData[pixelIndex + 2] * (1 - alpha))); // R
 
-                    }
-                    else // add画像が完全に透明の場合、srcのアルファ値は変更しない
-                    {
-                        //必要であればここに処理を書く
-                    }
-                });
+                    // アルファ値を維持（合成後のアルファ値は変更しない）
+                    if (pixelIndex + 3 < srcData.Length)
+                        srcData[pixelIndex + 3] = (byte)Math.Min(255, (addData[pixelIndex + 3] + srcData[pixelIndex + 3]));
+                }
+                // add画像が完全に透明の場合、srcのアルファ値は変更しない
+            });
+            unsafe
+            {
+                fixed (byte* pSrc = srcData)
+                {
+                    // 結果をMatに戻す
+                    Buffer.MemoryCopy(pSrc, src.DataPointer, srcData.Length, srcData.Length);
+                }
             }
         }
     }

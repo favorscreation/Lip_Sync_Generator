@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,8 +15,8 @@ namespace Lip_Sync_Generator_2
     {
         private LipSyncProcessor _lipSyncProcessor;
         private ConfigManager _configManager;
-        private Canvas _thresholdCanvas;
-        private TextBlock _thresholdText;
+        private List<float> _currentAudioAnalysis;
+
 
         public MainWindow()
         {
@@ -26,13 +27,11 @@ namespace Lip_Sync_Generator_2
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-
             try
             {
                 // ConfigManager の初期化
                 _configManager = new ConfigManager();
                 Debug.WriteLine("_configManager initialized");
-
 
                 // UIへのバインド (ConfigManager初期化後)
                 this.DataContext = _configManager.Config;
@@ -59,9 +58,6 @@ namespace Lip_Sync_Generator_2
                 // 初期選択 (ConfigManager初期化後)
                 SetInitialSelection();
                 Debug.WriteLine("Initial Selection set");
-
-                _thresholdText = new TextBlock { Text = "Threshold", Foreground = Brushes.Red };
-                Debug.WriteLine("_thresholdText initialized");
             }
             catch (Exception ex)
             {
@@ -69,7 +65,6 @@ namespace Lip_Sync_Generator_2
                 MessageBox.Show($"初期化中にエラーが発生しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
 
         private void SetInitialSelection()
         {
@@ -178,10 +173,10 @@ namespace Lip_Sync_Generator_2
                 // UIスレッドを占有しないようにTask.Run内で処理を実行
                 Task.Run(() =>
                 {
-                    var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
+                    _currentAudioAnalysis = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
                     this.Dispatcher.Invoke(() =>
                     {
-                        DrawingChart(averageList);
+                        DrawingChart(_currentAudioAnalysis);
                     });
                 });
             }
@@ -190,14 +185,35 @@ namespace Lip_Sync_Generator_2
                 Debug.WriteLine($"Error analyzing audio: {ex.Message}");
                 Notice_TextBlock.Text = $"Error analyzing audio: {ex.Message}. Please check the selected audio file.";
             }
-
         }
+
 
         /// <summary>
         ///オーディオ波形描画
         /// </summary>
         private void DrawingChart(List<float> averageList)
         {
+            if (audioChart == null)
+            {
+                Debug.WriteLine("audioChart is null");
+                return;
+            }
+
+            if (averageList == null)
+            {
+                audioChart.Series.Clear();
+                Debug.WriteLine("averageList is null");
+                return;
+            }
+            if (averageList.Count == 0)
+            {
+                audioChart.Series.Clear();
+                audioChart.Series.Add(new LineSeries { Values = new ChartValues<double> { 0 } });
+                Debug.WriteLine("averageList is empty");
+                return;
+            }
+
+
             audioChart.Series.Clear();
             audioChart.DisableAnimations = true;
             audioChart.DataTooltip = null;
@@ -217,21 +233,24 @@ namespace Lip_Sync_Generator_2
             double threshold = _configManager.Config.lipSync_threshold;
             LineSeries thresholdLine = new LineSeries
             {
-                Values = new ChartValues<double>(Enumerable.Repeat(threshold, averageList.Count)), // 全てのX値で同じY値となるように設定
+                Values = new ChartValues<double>(Enumerable.Repeat(threshold, averageList.Count)),
                 Stroke = Brushes.Red,
                 StrokeThickness = 2,
-                PointGeometry = null, // 点を非表示
-                LineSmoothness = 0, // 線を直線にする
+                PointGeometry = null,
+                LineSmoothness = 0,
             };
             audioChart.Series.Add(thresholdLine);
 
+
             // 最大音量線の設定
-            double maxVolume = averageList.Max() * _configManager.Config.lipSync_max_sensitivity;  // 最大音量を計算
+            double maxVolume = 0;
+            if (averageList.Any())
+                maxVolume = averageList.Max() * Math.Max(_configManager.Config.lipSync_max_sensitivity, 0.0001);
 
             LineSeries maxVolumeLine = new LineSeries
             {
                 Values = new ChartValues<double>(Enumerable.Repeat(maxVolume, averageList.Count)),
-                Stroke = Brushes.Green, // 最大音量線の色を緑に設定
+                Stroke = Brushes.Green,
                 StrokeThickness = 2,
                 PointGeometry = null,
                 LineSmoothness = 0,
@@ -239,25 +258,24 @@ namespace Lip_Sync_Generator_2
             audioChart.Series.Add(maxVolumeLine);
         }
 
-        private void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private async void LipSync_th_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             LipSync_th_TextBlock.Text = LipSync_th_Slider.Value.ToString("f1") + "%";
             _configManager.Config.lipSync_threshold = _configManager.Config.lipSync_threshold_percent / 100 * _configManager.Config.lipSync_threshold_max;
-            if (Audio_listBox.SelectedItem is Config.FileName selectedItem)
+
+            if (_currentAudioAnalysis != null && Audio_listBox.SelectedItem is Config.FileName selectedItem)
             {
-                //スライダーの値を変更した場合グラフも再描画
-                Task.Run(() =>
+                await Task.Run(() =>
                 {
-                    var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
                     this.Dispatcher.Invoke(() =>
                     {
-                        DrawingChart(averageList);
+                        DrawingChart(_currentAudioAnalysis);
                     });
                 });
             }
         }
 
-        private void LipSync_max_sensitivity_Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void LipSync_max_sensitivity_Slider_ValueChanged(object sender, RoutedEventArgs e)
         {
             if (LipSync_max_sensitivity_TextBlock == null)
             {
@@ -265,17 +283,9 @@ namespace Lip_Sync_Generator_2
                 return;
             }
             LipSync_max_sensitivity_TextBlock.Text = LipSync_max_sensitivity_Slider.Value.ToString("f1");
-            if (_lipSyncProcessor != null && Audio_listBox.SelectedItem is Config.FileName selectedItem && selectedItem != null && selectedItem.Path != null)
+            if (_currentAudioAnalysis != null)
             {
-                //スライダーの値を変更した場合グラフも再描画
-                Task.Run(() =>
-                {
-                    var averageList = _lipSyncProcessor.AnalyzeAudio(selectedItem.Path);
-                    this.Dispatcher.Invoke(() =>
-                    {
-                        DrawingChart(averageList);
-                    });
-                });
+                DrawingChart(_currentAudioAnalysis);
             }
         }
 
@@ -300,7 +310,7 @@ namespace Lip_Sync_Generator_2
 
         private void Load_preset_Button_Click(object sender, RoutedEventArgs e)
         {
-            _configManager.LoadPreset(_configManager.FileCollection);
+            _configManager.LoadPreset();
             // ItemsSource を設定し直す
             body_listBox.ItemsSource = _configManager.FileCollection.Body;
             Eyes_listBox.ItemsSource = _configManager.FileCollection.Eyes;
