@@ -44,16 +44,6 @@ namespace Lip_Sync_Generator_2
                 _lipSyncProcessor = new LipSyncProcessor(_configManager);
                 Debug.WriteLine("_lipSyncProcessor initialized");
 
-                //UI要素の初期化確認
-                if (LipSync_max_sensitivity_Slider == null)
-                    Debug.WriteLine("LipSync_max_sensitivity_Slider is null in MainWindow_Loaded");
-                else
-                    Debug.WriteLine("LipSync_max_sensitivity_Slider is not null in MainWindow_Loaded");
-
-                if (LipSync_max_sensitivity_TextBlock == null)
-                    Debug.WriteLine("LipSync_max_sensitivity_TextBlock is null in MainWindow_Loaded");
-                else
-                    Debug.WriteLine("LipSync_max_sensitivity_TextBlock is not null in MainWindow_Loaded");
 
                 // 初期選択 (ConfigManager初期化後)
                 SetInitialSelection();
@@ -61,7 +51,7 @@ namespace Lip_Sync_Generator_2
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error during MainWindow_Loaded: {ex}");
+                Debug.WriteLine($"Error during MainWindow_Loaded: ");
                 MessageBox.Show($"初期化中にエラーが発生しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -358,12 +348,19 @@ namespace Lip_Sync_Generator_2
             Notice_TextBlock.Text = "動画生成を開始します...";
             Run_Button.IsEnabled = false;
             var selectedAudioItems = Audio_listBox.SelectedItems?.Cast<Config.FileName>().ToList() ?? new();
-
+            Debug.WriteLine($"Run_Button_Click start. audio count: {selectedAudioItems.Count}"); // 追加
             try
             {
+                if (selectedAudioItems.Count == 0)
+                {
+                    Notice_TextBlock.Text = "オーディオファイルが選択されていません。";
+                    Debug.WriteLine("Audio file not selected.");
+                    return;
+                }
                 // UIスレッドを占有しないようにTask.Run内で処理を実行
                 await Task.Run(() =>
                 {
+                    Debug.WriteLine($"Task.Run start."); // 追加
                     _lipSyncProcessor.Run(selectedAudioItems, _configManager.FileCollection, (progress) =>
                     {
                         // UIスレッドに結果を反映
@@ -372,6 +369,7 @@ namespace Lip_Sync_Generator_2
                             Notice_TextBlock.Text = progress;
                         });
                     });
+                    Debug.WriteLine($"Task.Run end."); // 追加
                 });
 
                 this.Dispatcher.Invoke(() =>
@@ -385,6 +383,8 @@ namespace Lip_Sync_Generator_2
                 this.Dispatcher.Invoke(() =>
                 {
                     Notice_TextBlock.Text = $"動画生成中にエラーが発生しました: {ex.Message}";
+                    if (ex.InnerException != null)
+                        Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
                 });
             }
             finally
@@ -393,6 +393,7 @@ namespace Lip_Sync_Generator_2
                 {
                     Run_Button.IsEnabled = true;
                 });
+                Debug.WriteLine($"Run_Button_Click end."); // 追加
             }
         }
 

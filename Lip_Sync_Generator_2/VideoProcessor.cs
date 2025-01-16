@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using OpenCvSharp;
 
 namespace Lip_Sync_Generator_2
@@ -193,33 +191,6 @@ namespace Lip_Sync_Generator_2
                         //基準ステップ
                         float step = (float)(averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001);
 
-                        int maxPoolSize = 24;
-                        int concurrentFrameCount = 8;
-                        BlockingCollection<(int frameIndex, byte[] frameData)> frameQueue = new BlockingCollection<(int, byte[])>(maxPoolSize);
-
-                        var tasks = Enumerable.Range(0, concurrentFrameCount)
-                            .Select(_ => Task.Run(() =>
-                            {
-                                foreach (var item in frameQueue.GetConsumingEnumerable())
-                                {
-                                    int frame = item.frameIndex;
-                                    byte[] frameBytes = item.frameData;
-                                    using (MemoryStream ms = new MemoryStream())
-                                    {
-                                        ms.Write(frameBytes, 0, frameBytes.Length);
-                                        byte[] allBytes = ms.ToArray();
-                                        lock (process.StandardInput.BaseStream)
-                                        {
-                                            process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
-                                        }
-                                    }
-                                    if (frame % 10 == 0)
-                                    {
-                                        progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
-                                    }
-
-                                }
-                            })).ToArray();
 
                         for (int frame = 0; frame < averageListCopy.Count; frame++)
                         {
@@ -280,7 +251,6 @@ namespace Lip_Sync_Generator_2
                                     {
                                         //目の画像を合成(アルファブレンド)しない
                                         using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
-
                                         {
                                             inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
                                         }
@@ -301,19 +271,33 @@ namespace Lip_Sync_Generator_2
                                             Buffer.MemoryCopy(rgbaMat.DataPointer, p, frameBytes.Length, frameBytes.Length);
                                         }
                                     }
-                                    frameQueue.Add((frame, frameBytes));
+                                    using (MemoryStream ms = new MemoryStream())
+                                    {
+                                        ms.Write(frameBytes, 0, frameBytes.Length);
+                                        byte[] allBytes = ms.ToArray();
+                                        lock (process.StandardInput.BaseStream)
+                                        {
+                                            process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
+                                            process.StandardInput.BaseStream.Flush();
+                                        }
+                                    }
                                 }
                             }
+                            if (frame % 10 == 0)
+                            {
+                                progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
+                            }
                         }
-                        frameQueue.CompleteAdding();
-                        Task.WaitAll(tasks);
+
                         process.StandardInput.Close();
                         string error = process.StandardError.ReadToEnd();
                         process.WaitForExit();
                         if (process.ExitCode != 0)
+                        {
+                            Debug.WriteLine($"ffmpeg error: ");
                             throw new Exception("ffmpeg failed:" + error);
+                        }
                     }
-
 
                     //ReplaceAudioの処理
                     try
@@ -353,8 +337,7 @@ namespace Lip_Sync_Generator_2
                 if (AlphaVideo)
                     ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac -map 0:v -map 1:a \"{outputVideoPath}\"";
                 else
-                    ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac  \"{outputVideoPath}\"";
-
+                    ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac \"{outputVideoPath}\"";
                 using (Process process = new Process())
                 {
                     process.StartInfo.FileName = ConfigManager.CurrentDir + "\\ffmpeg\\ffmpeg.exe";
@@ -362,11 +345,15 @@ namespace Lip_Sync_Generator_2
                     process.StartInfo.RedirectStandardError = true;
                     process.StartInfo.CreateNoWindow = true;
                     process.StartInfo.Arguments = ffmpegArgs;
+                    Debug.WriteLine($"ffmpeg command(ReplaceAudio) : {process.StartInfo.FileName} {process.StartInfo.Arguments}");
                     process.Start();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
                     if (process.ExitCode != 0)
+                    {
+                        Debug.WriteLine($"ffmpeg error(ReplaceAudio): ");
                         throw new Exception("ffmpeg failed:" + error);
+                    }
                 }
             }
             catch (Exception ex)
@@ -375,8 +362,6 @@ namespace Lip_Sync_Generator_2
                 throw new Exception("Failed to replace audio", ex);
             }
         }
-
-
 
         /// <summary>
         /// 透過画像を重ね合わせる（アルファブレンド）
