@@ -69,179 +69,74 @@ namespace Lip_Sync_Generator_2
         }
 
         /// <summary>
-        /// キューイングを使用した動画生成処理（フレーム単位）
+        /// フレームを画像ファイルとして出力
         /// </summary>
-        private void ProcessFramesWithQueue(string audioPath, Config.FileCollection fileCollection, Action<string> progressCallback, bool AlphaVideo, List<float> averageListCopy, Mat baseMat, OpenCvSharp.Size size, List<Mat> inputsMatBody, List<Mat> inputsMatEyes)
+
+        private void CreateVideoFromFramesPipe(List<Mat> frames, string audioPath, string outputPath, bool AlphaVideo, string tempVideoName)
         {
-            //目存在フラグ
-            bool eye_exist = true;
-            if (fileCollection.Eyes.Count == 0)
-                eye_exist = false;
-            // 並列処理の最大数を設定 (必要に応じて設定を調整)
-            int maxDegreeOfParallelism = 8;
-
-            // フレームを格納するキューを作成
-            var frameQueue = new ConcurrentQueue<int>();
-            for (int i = 0; i < averageListCopy.Count; i++)
-            {
-                frameQueue.Enqueue(i);
-            }
-
-            //FFmpegの設定
             string ffmpegArgs;
+            //FFmpegの設定
             if (AlphaVideo)
             {
-                // 透過動画 (MOV) を出力
-                ffmpegArgs = $"-y -f rawvideo -pix_fmt rgba -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -i - -c:v png -pix_fmt rgba \"temp_video.mp4\"";
+                // 透過動画 (WebM) を出力
+                ffmpegArgs = $"-y -r {_configManager.Config.framerate} -f image2pipe -vcodec png -i - -c:v libvpx-vp9 -pix_fmt yuva420p -lossless 1 {tempVideoName}.webm";
+
             }
             else
             {
                 // カラーキー処理 (MP4) を出力
                 string bgColor = $"{_configManager.Config.background.R:X2}{_configManager.Config.background.G:X2}{_configManager.Config.background.B:X2}";
-                ffmpegArgs = $"-y -f rawvideo -pix_fmt rgba -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -i - -vf colorkey=0x{bgColor}:{_configManager.Config.similarity}:{_configManager.Config.blend} -c:v libx264 -pix_fmt yuv420p \"temp_video.mp4\"";
+                ffmpegArgs = $"-y -hwaccel none -r {_configManager.Config.framerate} -f image2pipe -vcodec png -i - -vf colorkey=0x{bgColor}:{_configManager.Config.similarity}:{_configManager.Config.blend} -c:v libopenh264 -pix_fmt yuv420p {tempVideoName}.mp4";
             }
-            using (Process process = new Process())
+            try
             {
-                process.StartInfo.FileName = _configManager.Config.ffmpegPath; // コンフィグからffmpegパスを取得
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.RedirectStandardInput = true;
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.Arguments = ffmpegArgs;
-                process.Start();
-                // タスクを生成
-                var tasks = Enumerable.Range(0, maxDegreeOfParallelism)
-                    .Select(_ => Task.Run(() =>
-                    {
-                        while (frameQueue.TryDequeue(out int currentFrame))
-                        {
-                            using (var outputMat = baseMat.Clone())
-                            {
-                                // 音量によって表示画像を切り替える
-                                //分割数
-                                int divide = inputsMatBody.Count;
-                                //基準ステップ
-                                float step = (float)(averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001);
-                                int dispNum = ((int)(averageListCopy[currentFrame] / step));
-                                if (dispNum >= divide)
-                                {
-                                    dispNum = divide - 1;
-                                }
-
-                                //Bodyの画像を合成
-                                using (var bodyMask = inputsMatBody[dispNum].ExtractChannel(3))
-                                {
-                                    inputsMatBody[dispNum].CopyTo(outputMat, bodyMask);
-                                }
-                                // まばたき処理
-                                _frameCount++;
-                                if (_blinkFrameCount == 0)
-                                {
-                                    if (_frameCount % (int)(_configManager.Config.framerate * (1 / _configManager.Config.blink_frequency)) == 0)
-                                    {
-                                        _blinkFrameCount = 1;
-                                        _nextBlinkFrame = 0;
-                                    }
-                                }
-
-                                if (eye_exist)
-                                {
-                                    int eyeIndex = 0;
-                                    if (_blinkFrameCount > 0)
-                                    {
-                                        int phaseLength = inputsMatEyes.Count;
-                                        int normalizedIndex = _nextBlinkFrame % (phaseLength * 2 - 2);
-
-                                        if (normalizedIndex < phaseLength)
-                                            eyeIndex = normalizedIndex;
-                                        else
-                                            eyeIndex = phaseLength - (normalizedIndex - phaseLength) - 2;
-
-                                        if (_nextBlinkFrame >= (inputsMatEyes.Count * 2 - 2))
-                                        {
-                                            _blinkFrameCount = 0;
-                                            _nextBlinkFrame = 0;
-                                        }
-                                        else
-                                        {
-                                            _nextBlinkFrame++;
-                                        }
-                                    }
-                                    if (AlphaVideo)
-                                    {
-                                        //目の画像を合成(アルファブレンド)
-                                        TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
-                                    }
-                                    else
-                                    {
-                                        //目の画像を合成(アルファブレンド)しない
-                                        using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
-                                        {
-                                            inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
-                                        }
-                                    }
-                                }
-
-                                using (Mat rgbaMat = new Mat())
-                                {
-                                    Cv2.CvtColor(outputMat, rgbaMat, ColorConversionCodes.BGR2RGBA);
-
-                                    // FFmpegにデータを送信
-                                    byte[] frameBytes = new byte[rgbaMat.Width * rgbaMat.Height * 4];
-
-                                    unsafe
-                                    {
-                                        fixed (byte* p = frameBytes)
-                                        {
-                                            Buffer.MemoryCopy(rgbaMat.DataPointer, p, frameBytes.Length, frameBytes.Length);
-                                        }
-                                    }
-                                    using (MemoryStream ms = new MemoryStream())
-                                    {
-                                        ms.Write(frameBytes, 0, frameBytes.Length);
-                                        byte[] allBytes = ms.ToArray();
-                                        lock (process.StandardInput.BaseStream)
-                                        {
-                                            process.StandardInput.BaseStream.Write(allBytes, 0, allBytes.Length);
-                                            process.StandardInput.BaseStream.Flush();
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (currentFrame % 10 == 0)
-                            {
-                                progressCallback(((float)currentFrame / averageListCopy.Count * 100).ToString("f0") + "%");
-                            }
-                        }
-                    })).ToList();
-
-                Task.WhenAll(tasks).Wait();
-
-                process.StandardInput.Close();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-                if (process.ExitCode != 0)
+                using (Process process = new Process())
                 {
-                    Debug.WriteLine($"ffmpeg error: ");
-                    throw new Exception("ffmpeg failed:" + error);
+                    process.StartInfo.FileName = _configManager.Config.ffmpegPath;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardError = true;
+                    process.StartInfo.RedirectStandardInput = true;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.Arguments = ffmpegArgs;
+                    Debug.WriteLine($"ffmpeg command(CreateVideoFromFramesPipe) : {process.StartInfo.FileName} {process.StartInfo.Arguments}");
+
+                    process.Start();
+
+                    using (var stdin = process.StandardInput.BaseStream)
+                    {
+                        foreach (Mat frame in frames)
+                        {
+                            byte[] byteArray = frame.ToBytes(".png");
+                            stdin.Write(byteArray, 0, byteArray.Length);
+                        }
+                    }
+                    process.WaitForExit();
+                    string error = process.StandardError.ReadToEnd();
+                    if (process.ExitCode != 0)
+                    {
+                        Debug.WriteLine($"ffmpeg error(CreateVideoFromFramesPipe): ");
+                        throw new Exception("ffmpeg failed:" + error);
+                    }
                 }
             }
-
-            //ReplaceAudioの処理
-            //ReplaceAudio(tempMovPath, audioPath, outputPath, AlphaVideo);
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during video creation: {ex.Message}");
+                throw new Exception("Failed to create video from frames", ex);
+            }
         }
 
 
         /// <summary>
-        /// 動画生成処理 (パイプ処理)
+        /// 動画生成処理 (中間ファイル使用)
         /// </summary>
         public void ConvertToTransparentWithPipe(string audioPath, Config.FileCollection fileCollection, Action<string> progressCallback, bool AlphaVideo)
         {
             //tempファイル名を生成
             Guid g = System.Guid.NewGuid();
             string guid = g.ToString("N").Substring(0, 8);
-            string tempMovPath = "temp_" + guid + ".mp4";
+            string tempVideoName = $"temp_video_{guid}";
+
             string outPath = @"outputs/";
             //出力パス
             if (!Directory.Exists(outPath))
@@ -250,12 +145,13 @@ namespace Lip_Sync_Generator_2
 
             if (AlphaVideo)
             {
-                outputPath = outPath + Path.GetFileNameWithoutExtension(audioPath) + ".mov";
+                outputPath = outPath + Path.GetFileNameWithoutExtension(audioPath) + ".webm";
             }
             else
             {
                 outputPath = outPath + Path.GetFileNameWithoutExtension(audioPath) + ".mp4";
             }
+
 
             List<float> averageListCopy = AnalyzeAudio(audioPath);
 
@@ -290,7 +186,6 @@ namespace Lip_Sync_Generator_2
                             size.Width += 1;
                         if (size.Height % 2 != 0)
                             size.Height += 1;
-
                         checkSize = true;
                     }
                     resizedMat = tempMat.Resize(size);
@@ -316,6 +211,8 @@ namespace Lip_Sync_Generator_2
                     inputsMatEyes.Add(resizedMat);
                 }
             }
+            List<Mat> frames = new List<Mat>();
+
 
             try
             {
@@ -325,21 +222,100 @@ namespace Lip_Sync_Generator_2
                         baseMat.SetTo(new OpenCvSharp.Scalar(0, 0, 0, 0));
                     else
                         baseMat.SetTo(new OpenCvSharp.Scalar(bb, gb, rb, 255));
+                    //フレームごとの処理
+                    //目存在フラグ
+                    bool eye_exist = true;
+                    if (fileCollection.Eyes.Count == 0)
+                        eye_exist = false;
 
+                    for (int currentFrame = 0; currentFrame < averageListCopy.Count; currentFrame++)
+                    {
+                        using (var outputMat = baseMat.Clone())
+                        {
+                            // 音量によって表示画像を切り替える
+                            //分割数
+                            int divide = inputsMatBody.Count;
+                            //基準ステップ
+                            float step = (float)(averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001);
+                            int dispNum = ((int)(averageListCopy[currentFrame] / step));
+                            if (dispNum >= divide)
+                            {
+                                dispNum = divide - 1;
+                            }
 
-                    ProcessFramesWithQueue(audioPath, fileCollection, progressCallback, AlphaVideo, averageListCopy, baseMat, size, inputsMatBody, inputsMatEyes);
+                            //Bodyの画像を合成
+                            using (var bodyMask = inputsMatBody[dispNum].ExtractChannel(3))
+                            {
+                                inputsMatBody[dispNum].CopyTo(outputMat, bodyMask);
+                            }
+                            // まばたき処理
+                            _frameCount++;
+                            if (_blinkFrameCount == 0)
+                            {
+                                if (_frameCount % (int)(_configManager.Config.framerate * (1 / _configManager.Config.blink_frequency)) == 0)
+                                {
+                                    _blinkFrameCount = 1;
+                                    _nextBlinkFrame = 0;
+                                }
+                            }
 
+                            if (eye_exist)
+                            {
+                                int eyeIndex = 0;
+                                if (_blinkFrameCount > 0)
+                                {
+                                    int phaseLength = inputsMatEyes.Count;
+                                    int normalizedIndex = _nextBlinkFrame % (phaseLength * 2 - 2);
 
-                    //ReplaceAudioの処理
+                                    if (normalizedIndex < phaseLength)
+                                        eyeIndex = normalizedIndex;
+                                    else
+                                        eyeIndex = phaseLength - (normalizedIndex - phaseLength) - 2;
+
+                                    if (_nextBlinkFrame >= (inputsMatEyes.Count * 2 - 2))
+                                    {
+                                        _blinkFrameCount = 0;
+                                        _nextBlinkFrame = 0;
+                                    }
+                                    else
+                                    {
+                                        _nextBlinkFrame++;
+                                    }
+                                }
+                                if (AlphaVideo)
+                                {
+                                    //目の画像を合成(アルファブレンド)
+                                    TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
+                                }
+                                else
+                                {
+                                    //目の画像を合成(アルファブレンド)しない
+                                    using (var eyeMask = inputsMatEyes[eyeIndex].ExtractChannel(3))
+                                    {
+                                        inputsMatEyes[eyeIndex].CopyTo(outputMat, eyeMask);
+                                    }
+                                }
+                            }
+                            frames.Add(outputMat.Clone());
+                        }
+                        if (currentFrame % 10 == 0)
+                        {
+                            progressCallback(((float)currentFrame / averageListCopy.Count * 100).ToString("f0") + "%");
+                        }
+                    }
+
+                    CreateVideoFromFramesPipe(frames, audioPath, outputPath, AlphaVideo, tempVideoName);
                     try
                     {
-                        ReplaceAudio("temp_video.mp4", audioPath, outputPath, AlphaVideo);
+                        ReplaceAudio(AlphaVideo ? $"{tempVideoName}.webm" : $"{tempVideoName}.mp4", audioPath, outputPath, AlphaVideo);
                     }
                     finally
                     {
-                        File.Delete("temp_video.mp4"); // 一時ファイルを削除
+                        File.Delete(AlphaVideo ? $"{tempVideoName}.webm" : $"{tempVideoName}.mp4"); // 一時ファイルを削除
                     }
+
                 }
+
             }
             catch (Exception ex)
             {
@@ -353,7 +329,59 @@ namespace Lip_Sync_Generator_2
                     item.Value.Dispose();
                 }
                 _resizedImageCache.Clear();
+                foreach (var frame in frames)
+                {
+                    frame.Dispose();
+                }
                 GC.Collect();
+            }
+        }
+
+
+        /// <summary>
+        /// 連番PNGファイルから動画を作成する (FFmpeg コマンドライン版)
+        /// </summary>
+        private void CreateVideoFromFrames(string tempDir, string audioPath, string outputPath, bool AlphaVideo, string tempVideoName)
+        {
+            string ffmpegArgs;
+            //FFmpegの設定
+            if (AlphaVideo)
+            {
+                // 透過動画 (WebM) を出力
+                ffmpegArgs = $"-y -r {_configManager.Config.framerate} -i {tempDir}\\frame_%04d.png -c:v libvpx-vp9 -pix_fmt yuva420p -lossless 1 {tempVideoName}.webm";
+
+            }
+            else
+            {
+                // カラーキー処理 (MP4) を出力
+                string bgColor = $"{_configManager.Config.background.R:X2}{_configManager.Config.background.G:X2}{_configManager.Config.background.B:X2}";
+                ffmpegArgs = $"-y -hwaccel none -r {_configManager.Config.framerate} -i {tempDir}\\frame_%04d.png -vf colorkey=0x{bgColor}:{_configManager.Config.similarity}:{_configManager.Config.blend} -c:v libopenh264 -pix_fmt yuv420p {tempVideoName}.mp4";
+            }
+            try
+            {
+                using (Process process = new Process())
+                {
+                    process.StartInfo.FileName = _configManager.Config.ffmpegPath;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardError = true;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.Arguments = ffmpegArgs;
+                    Debug.WriteLine($"ffmpeg command(CreateVideoFromFrames) : {process.StartInfo.FileName} {process.StartInfo.Arguments}");
+
+                    process.Start();
+                    string error = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+                    if (process.ExitCode != 0)
+                    {
+                        Debug.WriteLine($"ffmpeg error(CreateVideoFromFrames): ");
+                        throw new Exception("ffmpeg failed:" + error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during video creation: {ex.Message}");
+                throw new Exception("Failed to create video from frames", ex);
             }
         }
 
@@ -367,9 +395,10 @@ namespace Lip_Sync_Generator_2
             {
                 string ffmpegArgs;
                 if (AlphaVideo)
-                    ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac -map 0:v -map 1:a \"{outputVideoPath}\"";
+                    ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a libopus -map 0:v -map 1:a \"{outputVideoPath}\"";
                 else
                     ffmpegArgs = $"-y -i \"{inputVideoPath}\" -i \"{inputAudioPath}\" -c:v copy -c:a aac \"{outputVideoPath}\"";
+
                 using (Process process = new Process())
                 {
                     process.StartInfo.FileName = ConfigManager.CurrentDir + "\\ffmpeg\\ffmpeg.exe";
@@ -440,15 +469,19 @@ namespace Lip_Sync_Generator_2
                 if (alpha > 0)
                 {
                     // アルファブレンド処理
-                    srcData[pixelIndex] = (byte)((addData[pixelIndex] * alpha) + (srcData[pixelIndex] * (1 - alpha))); // B
-                    srcData[pixelIndex + 1] = (byte)((addData[pixelIndex + 1] * alpha) + (srcData[pixelIndex + 1] * (1 - alpha))); // G
-                    srcData[pixelIndex + 2] = (byte)((addData[pixelIndex + 2] * alpha) + (srcData[pixelIndex + 2] * (1 - alpha))); // R
+                    // B
+                    srcData[pixelIndex] = (byte)((addData[pixelIndex] * alpha) + (srcData[pixelIndex] * (1 - alpha)));
+                    // G
+                    srcData[pixelIndex + 1] = (byte)((addData[pixelIndex + 1] * alpha) + (srcData[pixelIndex + 1] * (1 - alpha)));
+                    // R
+                    srcData[pixelIndex + 2] = (byte)((addData[pixelIndex + 2] * alpha) + (srcData[pixelIndex + 2] * (1 - alpha)));
 
                     // アルファ値を維持（合成後のアルファ値は変更しない）
                     if (pixelIndex + 3 < srcData.Length)
-                        srcData[pixelIndex + 3] = (byte)Math.Min(255, (addData[pixelIndex + 3] + srcData[pixelIndex + 3]));
+                        srcData[pixelIndex + 3] = (byte)(addData[pixelIndex + 3]);
                 }
                 // add画像が完全に透明の場合、srcのアルファ値は変更しない
+
             });
             unsafe
             {
