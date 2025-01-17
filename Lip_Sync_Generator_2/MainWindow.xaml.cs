@@ -346,7 +346,10 @@ namespace Lip_Sync_Generator_2
         private async void Run_Button_Click(object sender, RoutedEventArgs e)
         {
             Notice_TextBlock.Text = "動画生成を開始します...";
-            Run_Button.IsEnabled = false;
+            Run_Button.Visibility = Visibility.Collapsed;
+            Run_ProgressBar.Visibility = Visibility.Visible;
+            Run_ProgressBar.Value = 0; // プログレスバーを初期化
+
             var selectedAudioItems = Audio_listBox.SelectedItems?.Cast<Config.FileName>().ToList() ?? new();
             Debug.WriteLine($"Run_Button_Click start. audio count: {selectedAudioItems.Count}"); // 追加
             try
@@ -355,6 +358,8 @@ namespace Lip_Sync_Generator_2
                 {
                     Notice_TextBlock.Text = "オーディオファイルが選択されていません。";
                     Debug.WriteLine("Audio file not selected.");
+                    Run_Button.Visibility = Visibility.Visible;
+                    Run_ProgressBar.Visibility = Visibility.Collapsed;
                     return;
                 }
                 // UIスレッドを占有しないようにTask.Run内で処理を実行
@@ -367,6 +372,11 @@ namespace Lip_Sync_Generator_2
                         this.Dispatcher.Invoke(() =>
                         {
                             Notice_TextBlock.Text = progress;
+                            if (double.TryParse(progress.Replace("%", ""), out double value))
+                            {
+                                Run_ProgressBar.Value = value; // プログレスバーを更新
+                            }
+
                         });
                     });
                     Debug.WriteLine($"Task.Run end."); // 追加
@@ -375,6 +385,8 @@ namespace Lip_Sync_Generator_2
                 this.Dispatcher.Invoke(() =>
                 {
                     Notice_TextBlock.Text = "動画生成が完了しました。";
+                    Run_Button.Visibility = Visibility.Visible;
+                    Run_ProgressBar.Visibility = Visibility.Collapsed;
                 });
             }
             catch (Exception ex)
@@ -385,14 +397,12 @@ namespace Lip_Sync_Generator_2
                     Notice_TextBlock.Text = $"動画生成中にエラーが発生しました: {ex.Message}";
                     if (ex.InnerException != null)
                         Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                    Run_Button.Visibility = Visibility.Visible;
+                    Run_ProgressBar.Visibility = Visibility.Collapsed;
                 });
             }
             finally
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    Run_Button.IsEnabled = true;
-                });
                 Debug.WriteLine($"Run_Button_Click end."); // 追加
             }
         }

@@ -37,6 +37,23 @@
                                   HorizontalAlignment="Center" />
             </Border>
         </ControlTemplate>
+        <Style TargetType="ProgressBar">
+            <Setter Property="Foreground" Value="#4CAF50" />
+            <Setter Property="Background" Value="#e0e0e0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Margin" Value="2,2,2,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ProgressBar}">
+                        <Grid>
+                            <Border x:Name="PART_Track"  CornerRadius="4" Background="#e0e0e0"/>
+                            <Border x:Name="PART_Indicator"  CornerRadius="4" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <Grid.Background>
@@ -235,9 +252,13 @@
                     </StackPanel>
                 </TabItem>
             </TabControl>
-
-            <Button Grid.Row="4" Grid.Column="1" x:Name="Run_Button" Template="{StaticResource buttonTemplate}" Content="実行" Height="40" VerticalAlignment="Center" Click="Run_Button_Click" Foreground="White" FontSize="20"   />
-
+            <Grid Grid.Row="4" Grid.Column="1" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40"/>
+                </Grid.RowDefinitions>
+                <Button x:Name="Run_Button" Template="{StaticResource buttonTemplate}" Content="実行" Height="40" VerticalAlignment="Center" Click="Run_Button_Click" Foreground="White" FontSize="20"  />
+                <ProgressBar x:Name="Run_ProgressBar"   VerticalAlignment="Center" Visibility="Collapsed"  />
+            </Grid>
         </Grid>
     </Grid>
 </Window>
