@@ -53,8 +53,8 @@ namespace Lip_Sync_Generator_2
                 blink_intervalFrame = 72;
                 blink_interval_randomFrame = 24;
                 background = [0, 0, 255];
-                similarity = 0.1f;
-                blend = 0.5f;
+                similarity = 0.3f;
+                blend = 0.01f;
             }
         }
 

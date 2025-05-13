@@ -364,9 +364,9 @@ namespace Lip_Sync_Generator_2
             Mat input_mat2 = Cv2.ImRead(pic_path2, ImreadModes.Unchanged);
             Mat input_mat3 = Cv2.ImRead(pic_path3, ImreadModes.Unchanged);
             //透明ピクセルを置換
-            MatFunction.Transparent_replacement(input_mat1, (byte)rb, (byte)gb, (byte)bb);
-            MatFunction.Transparent_replacement(input_mat2, (byte)rb, (byte)gb, (byte)bb);
-            MatFunction.Transparent_replacement(input_mat3, (byte)rb, (byte)gb, (byte)bb);
+            MatFunction.ApplyAlphaBlending(input_mat1, (byte)rb, (byte)gb, (byte)bb);
+            MatFunction.ApplyAlphaBlending(input_mat2, (byte)rb, (byte)gb, (byte)bb);
+            MatFunction.ApplyAlphaBlending(input_mat3, (byte)rb, (byte)gb, (byte)bb);
             //透明度削除
             input_mat1 = input_mat1.CvtColor(ColorConversionCodes.BGRA2BGR);
             input_mat2 = input_mat2.CvtColor(ColorConversionCodes.BGRA2BGR);
@@ -402,9 +402,9 @@ namespace Lip_Sync_Generator_2
             input_eye3 = input_eye3.Resize(size);
 
             //透明色を黒に変更
-            MatFunction.Transparent_replacement_ToBlack(input_eye1);
-            MatFunction.Transparent_replacement_ToBlack(input_eye2);
-            MatFunction.Transparent_replacement_ToBlack(input_eye3);
+            MatFunction.ReplaceTransparentPixelsWithBlack(input_eye1);
+            MatFunction.ReplaceTransparentPixelsWithBlack(input_eye2);
+            MatFunction.ReplaceTransparentPixelsWithBlack(input_eye3);
             //透明度削除
             input_eye1 = input_eye1.CvtColor(ColorConversionCodes.BGRA2BGR);
             input_eye2 = input_eye2.CvtColor(ColorConversionCodes.BGRA2BGR);
@@ -437,7 +437,7 @@ namespace Lip_Sync_Generator_2
                     if (frame % 10 == 0)
                         this.Dispatcher.Invoke(() =>
                         {
-                            Notice_TextBox.Text = ((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
+                            Notice_TextBox.Text = "クロマキー生成中:"+((float)frame / averageListCopy.Count * 100).ToString("f0") + "%";
                         });
 
 
@@ -527,30 +527,85 @@ namespace Lip_Sync_Generator_2
         private void convert2Transparent(string input_movie)
         {
             if (AlphaVideo)
+            {
                 try
                 {
                     using (Process process = new Process())
                     {
                         string outPath = CurrentDir + @"\outputs\" + Path.GetFileNameWithoutExtension(input_movie) + ".mov";
                         process.StartInfo.FileName = ffmpegDir + "\\ffmpeg.exe";
-                        string bgColor = config.background[0].ToString("x2") + config.background[1].ToString("x2") + config.background[2].ToString("x2");
 
-                        //-y 上書き
-                        process.StartInfo.Arguments = $@"-y -i {input_movie} -vf colorkey={bgColor}:{config.similarity}:{config.blend} -pix_fmt argb -c:v qtrle {outPath}";
+                        // 背景色を16進数で指定
+                        string bgColor = $"{config.background[0]:X2}{config.background[1]:X2}{config.background[2]:X2}";
+
+                        // similarity と blend の値を調整
+                        float similarity = Math.Clamp(config.similarity, 0.01f, 1.0f); // 0.01～1.0 の範囲に制限
+                        float blend = Math.Clamp(config.blend, 0.0f, 1.0f); // 0.0～1.0 の範囲に制限
+
+                        // FFmpeg コマンド
+                        process.StartInfo.Arguments = $@"-y -i ""{input_movie}"" -vf ""colorkey=0x{bgColor}:{similarity}:{blend}"" -pix_fmt argb -c:v qtrle ""{outPath}""";
+                        process.StartInfo.UseShellExecute = false;
+                        process.StartInfo.RedirectStandardError = true;
+                        process.StartInfo.CreateNoWindow = true; // ターミナルウィンドウを非表示に設定
+
+                        // プロセス開始
                         process.Start();
 
-                        // コマンド終了まで待機
+                        // 別スレッドで進捗を監視
+                        Task.Run(() =>
+                        {
+                            using (StreamReader reader = process.StandardError)
+                            {
+                                string? line;
+                                while ((line = reader.ReadLine()) != null)
+                                {
+                                    // 進捗情報を解析
+                                    if (line.Contains("frame="))
+                                    {
+                                        // 例: "frame=  100 fps=25 q=28.0 size=   1024kB time=00:00:04.00 bitrate=2096.0kbits/s speed=1.00x"
+                                        string time = ExtractTimeFromFFmpegOutput(line);
+                                        this.Dispatcher.Invoke(() =>
+                                        {
+                                            Notice_TextBox.Text = $"透過処理 進捗: {time}";
+                                        });
+                                    }
+                                }
+                            }
+                        });
+
                         process.WaitForExit();
+
+                        if (process.ExitCode != 0)
+                        {
+                            Debug.WriteLine("FFmpeg process failed.");
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine(ex.ToString());
+                    Debug.WriteLine($"Error in convert2Transparent: {ex.Message}");
                 }
-                finally
-                {
-                }
+            }
         }
+
+        /// <summary>
+        /// FFmpeg の出力から時間情報を抽出
+        /// </summary>
+        private string ExtractTimeFromFFmpegOutput(string ffmpegOutput)
+        {
+            // "time=00:00:04.00" の部分を抽出
+            int timeIndex = ffmpegOutput.IndexOf("time=");
+            if (timeIndex >= 0)
+            {
+                int endIndex = ffmpegOutput.IndexOf(" ", timeIndex);
+                if (endIndex > timeIndex)
+                {
+                    return ffmpegOutput.Substring(timeIndex + 5, endIndex - timeIndex - 5);
+                }
+            }
+            return "不明";
+        }
+
 
         private async void Run()
         {
@@ -740,6 +795,88 @@ namespace Lip_Sync_Generator_2
         public static T[] ToArray<T>(this System.Collections.IList source)
         {
             return source?.Cast<T>().ToArray() ?? Array.Empty<T>();
+        }
+    }
+    internal class MatFunction
+    {
+        /// <summary>
+        /// アルファブレンディングを適用して透明ピクセルを指定された色でブレンド
+        /// </summary>
+        /// <param name="mat">対象のMat</param>
+        /// <param name="R">ブレンドする赤成分</param>
+        /// <param name="G">ブレンドする緑成分</param>
+        /// <param name="B">ブレンドする青成分</param>
+        public static void ApplyAlphaBlending(Mat mat, byte R, byte G, byte B)
+        {
+            unsafe
+            {
+                byte* data = mat.DataPointer;
+                int width = mat.Width;
+                int height = mat.Height;
+                int channels = 4; // BGRA
+
+                Parallel.For(0, height, y =>
+                {
+                    byte* row = data + y * mat.Step();
+                    for (int x = 0; x < width; x++)
+                    {
+                        byte* pixel = row + x * channels;
+
+                        // アルファ値を取得 (0-255)
+                        float alpha = pixel[3] / 255.0f;
+
+                        // アルファ値が0の場合は完全に背景色
+                        if (alpha == 0)
+                        {
+                            pixel[0] = B; // Blue
+                            pixel[1] = G; // Green
+                            pixel[2] = R; // Red
+                            pixel[3] = 255; // Alpha (不透明)
+                        }
+                        else if (alpha > 0 && alpha < 1)
+                        {
+                            // アルファブレンド処理
+                            pixel[0] = (byte)((pixel[0] * alpha) + (B * (1 - alpha))); // Blue
+                            pixel[1] = (byte)((pixel[1] * alpha) + (G * (1 - alpha))); // Green
+                            pixel[2] = (byte)((pixel[2] * alpha) + (R * (1 - alpha))); // Red
+                            pixel[3] = 255; // Alpha (不透明)
+                        }
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// 透明ピクセルを黒に置換（マスク処理用、アルファ値を考慮）
+        /// </summary>
+        /// <param name="mat">対象のMat</param>
+        public static void ReplaceTransparentPixelsWithBlack(Mat mat)
+        {
+            unsafe
+            {
+                byte* data = mat.DataPointer;
+                int width = mat.Width;
+                int height = mat.Height;
+                int channels = 4; // BGRA
+
+                Parallel.For(0, height, y =>
+                {
+                    byte* row = data + y * mat.Step();
+                    for (int x = 0; x < width; x++)
+                    {
+                        byte* pixel = row + x * channels;
+
+                        // アルファ値が0の場合、黒に置換
+                        if (pixel[3] == 0)
+                        {
+                            pixel[0] = 0; // Blue
+                            pixel[1] = 0; // Green
+                            pixel[2] = 0; // Red
+                            pixel[3] = 255; // Alpha (不透明)
+                        }
+                    }
+                });
+            }
         }
     }
 }

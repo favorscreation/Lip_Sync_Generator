@@ -1,0 +1,17 @@
+# VS2022の不要ファイル
+*.vs
+*.user
+bin/
+obj/
+.idea/
+.vscode/
+.vs/
+
+# ビルドキャッシュ
+*.dll
+*.exe
+*.log
+
+# その他の設定ファイル
+.DS_Store
+Thumbs.db
