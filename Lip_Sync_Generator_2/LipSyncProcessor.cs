@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices; // 必須: Marshal.Copy用
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,61 +19,39 @@ namespace Lip_Sync_Generator_2
         private ConfigManager _configManager;
         private int _frameCount = 0;
         private int _blinkFrameCount = 0;
-        private int _nextBlinkFrame = 0; // 次のまばたきまでのフレーム数
+        private int _nextBlinkFrame = 0;
         public bool AlphaVideo { get; set; } = false;
         private WaveOutEvent _outputDevice = new WaveOutEvent();
+
         public LipSyncProcessor(ConfigManager configManager)
         {
             _configManager = configManager;
         }
 
-        /// <summary>
-        /// リストボックスのアイテムを上へ移動
-        /// </summary>
+        #region ListBox / DragDrop Operations
         public void UpItem(ListBox listBox, Config.FileList list)
         {
-            //リストボックスで選択されているインデックス取得
             var selectedItem = listBox.SelectedItem as Config.FileName;
-
-            if (selectedItem == null)
-                return;
-
+            if (selectedItem == null) return;
             int index = list.IndexOf(selectedItem);
-            //一つ上のインデックスが存在しない（-1）場合何もしない
-            if (index - 1 == -1)
-                return;
-
-            //交換先のアイテムをバッファ
+            if (index - 1 == -1) return;
             var buff = list[index - 1];
-
-            //交換実行
             list[index - 1] = list[index];
             list[index] = buff;
-
-            //交換後のアイテムを選択
             listBox.SelectedItem = list[index - 1];
         }
-        /// <summary>
-        /// リストボックスのアイテムを下へ移動
-        /// </summary>
+
         public void DownItem(ListBox listBox, Config.FileList list)
         {
             var selectedItem = listBox.SelectedItem as Config.FileName;
-            if (selectedItem == null)
-                return;
-
+            if (selectedItem == null) return;
             int index = list.IndexOf(selectedItem);
-            if (index + 1 == list.Count)
-                return;
-
+            if (index + 1 == list.Count) return;
             var buff = list[index + 1];
             list[index + 1] = list[index];
             listBox.SelectedItem = list[index + 1];
         }
 
-        /// <summary>
-        /// ファイルドロップ時の処理
-        /// </summary>
         public void DropFile(object sender, DragEventArgs e, Config.FileCollection fileCollection)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -83,348 +62,356 @@ namespace Lip_Sync_Generator_2
                     var itemlist = (Config.FileList)((ListBox)sender).ItemsSource;
                     itemlist.Add(new Config.FileName(Path.GetFileName(name), name));
                 }
-                 ((ListBox)sender).SelectedIndex = 0;
+                ((ListBox)sender).SelectedIndex = 0;
             }
         }
-        /// <summary>
-        /// 音声のボリュームを解析
-        /// </summary>
-        public List<float> AnalyzeAudio(string audio_path)
-        {
-            List<float> averageList = new List<float>();
 
-            AudioFileReader audio_reader;
-            try
-            {
-                audio_reader = new AudioFileReader(audio_path);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-                return new List<float>();
-            }
-
-            float[] samples = new float[audio_reader.Length / audio_reader.BlockAlign * audio_reader.WaveFormat.Channels];
-            audio_reader.Read(samples, 0, samples.Length);
-
-            float time = (float)audio_reader.TotalTime.TotalSeconds;
-
-            _configManager.Config.average_samples = (int)(samples.Length / time / _configManager.Config.framerate);
-
-
-            //平均化処理
-            for (int i = 0; i < samples.Length; i += _configManager.Config.average_samples)
-            {
-
-                float sum = 0;
-                for (int j = 0; j < _configManager.Config.average_samples; j++)
-                {
-                    //samplesの範囲を超えないようにif
-                    if (i + j >= samples.Length)
-                        break;
-
-                    //絶対値化
-                    sum += Math.Abs(samples[i + j]);
-                }
-                averageList.Add(sum / (float)_configManager.Config.average_samples * _configManager.Config.sample_scale);
-            }
-            return averageList;
-        }
-        /// <summary>
-        /// リストからアイテム削除
-        /// </summary>
         public void DeleteItem(ListBox listBox, Config.FileList list)
         {
             if (listBox.SelectedItem is Config.FileName selectedItem)
             {
                 list.Remove(selectedItem);
             }
-
-
             if (listBox.Items.Count > 0)
                 listBox.SelectedIndex = listBox.Items.Count - 1;
         }
+        #endregion
+
         /// <summary>
-        /// 動画生成処理
+        /// 音声解析（省メモリ・ストリーミング版）
         /// </summary>
-        private void CreateMovie(string audioPath, Config.FileCollection fileCollection, Action<string> progressCallback)
+        public List<float> AnalyzeAudio(string audio_path)
         {
-            //目存在フラグ
-            bool eye_exist = true;
-            if (fileCollection.Eyes.Count == 0)
-                eye_exist = false;
-
-            //tempファイル名を生成
-            Guid g = System.Guid.NewGuid();
-            string guid = g.ToString("N").Substring(0, 8);
-            string tempMovPath = "temp_" + guid + ".mp4";
-            string outPath = @"outputs/";
-
-            List<float> averageListCopy = AnalyzeAudio(audioPath);
-
-            List<Mat> inputsMatBody = new List<Mat>();
-            List<Mat> inputsMatEyes = new List<Mat>();
-
-            OpenCvSharp.Size size = new OpenCvSharp.Size();
-            bool checkSize = false;
-
-            //バックグラウンドカラー
-            var rb = _configManager.Config.background.R;
-            var gb = _configManager.Config.background.G;
-            var bb = _configManager.Config.background.B;
-
-            //body画像を取得
-            foreach (var item in fileCollection.Body)
-            {
-                //透明度込みで読み込む
-                var mat = Cv2.ImRead(item.Path, ImreadModes.Unchanged);
-                inputsMatBody.Add(mat);
-
-                //bodyの最初の1枚を基準サイズとする
-                if (checkSize == false)
-                {
-                    size = new OpenCvSharp.Size(inputsMatBody[0].Width, inputsMatBody[0].Height);
-                }
-                checkSize = true;
-            }
-
-            //目画像を取得
-            List<Config.FileName> eyeFiles = fileCollection.Eyes.ToList();
-            for (int i = 0; i < eyeFiles.Count; i++)
-            {
-                //透明度込みで読み込む
-                inputsMatEyes.Add(Cv2.ImRead(eyeFiles[i].Path, ImreadModes.Unchanged));
-            }
-
-
-            //縦横ピクセルが2の倍数でないとエラーになるので奇数なら1を足す
-            if (size.Width % 2 != 0)
-                size.Width += 1;
-            if (size.Height % 2 != 0)
-                size.Height += 1;
-
-            //Resize
-            for (var i = 0; i < inputsMatBody.Count; i++)
-            {
-                inputsMatBody[i] = inputsMatBody[i].Resize(size);
-            }
-            for (var i = 0; i < inputsMatEyes.Count; i++)
-            {
-                inputsMatEyes[i] = inputsMatEyes[i].Resize(size);
-            }
-
-            //出力パス
-            if (!Directory.Exists(outPath))
-                Directory.CreateDirectory(outPath);
-            string outputPath = outPath + Path.GetFileNameWithoutExtension(audioPath) + ".mp4";
-
+            List<float> averageList = new List<float>();
             try
             {
-                //口パク目パチ処理
-                using (var vw = new VideoWriter(tempMovPath, FourCC.H264, _configManager.Config.framerate, size))
-                using (var baseMat = new Mat(size, MatType.CV_8UC4, new Scalar(bb, gb, rb, 255)))
+                using (var audio_reader = new AudioFileReader(audio_path))
                 {
-                    //分割数
-                    int divide = inputsMatBody.Count;
-                    //基準ステップ
-                    float step = averageListCopy.Max() / divide / _configManager.Config.lipSync_threshold + 0.0001f;
+                    float frameDuration = 1.0f / _configManager.Config.framerate;
+                    int samplesPerFrame = (int)(audio_reader.WaveFormat.SampleRate * audio_reader.WaveFormat.Channels * frameDuration);
 
-                    Debug.WriteLine(step);
+                    _configManager.Config.average_samples = samplesPerFrame;
 
-                    for (int frame = 0; frame < averageListCopy.Count; frame++)
+                    float[] buffer = new float[samplesPerFrame];
+                    int samplesRead;
+
+                    while ((samplesRead = audio_reader.Read(buffer, 0, buffer.Length)) > 0)
                     {
+                        double sum = 0;
+                        for (int i = 0; i < samplesRead; i++) sum += Math.Abs(buffer[i]);
 
-                        //音量によって表示画像を切り替える
-                        int dispNum = ((int)(averageListCopy[frame] / step));
-                        if (dispNum >= divide)
-                            dispNum = divide - 1;
-
-                        using (var outputMat = baseMat.Clone())
+                        float avg = 0;
+                        if (samplesRead > 0)
                         {
-                            //アルファチャンネルをマスクとし、outputMatにコピーする
-                            //メモリリーク原因となるのでExtractChannelもusing
-                            using (var bodyMask = inputsMatBody[dispNum].ExtractChannel(3))
-                            {
-                                inputsMatBody[dispNum].CopyTo(outputMat, bodyMask);
-                            }
-
-                            //目パチ
-                            _frameCount++;
-
-                            if (_blinkFrameCount == 0)
-                            {
-                                if (_frameCount % (int)(_configManager.Config.framerate * (1 / _configManager.Config.blink_frequency)) == 0)
-                                {
-                                    _blinkFrameCount = 1; // まばたきを開始
-                                    _nextBlinkFrame = 0;
-                                }
-                            }
-
-                            if (eye_exist)
-                            {
-                                int eyeIndex = 0;
-                                if (_blinkFrameCount > 0)
-                                {
-                                    int phaseLength = inputsMatEyes.Count; // フレーム数を取得
-                                    int normalizedIndex = _nextBlinkFrame % (phaseLength * 2 - 2); // 往復運動にするため
-                                    if (normalizedIndex < phaseLength)
-                                        eyeIndex = normalizedIndex;
-                                    else
-                                        eyeIndex = phaseLength - (normalizedIndex - phaseLength) - 2;
-
-
-                                    // まばたきが完了したら次のまばたきまでのフレームをカウントする
-                                    if (_nextBlinkFrame >= (inputsMatEyes.Count * 2 - 2))
-                                    {
-                                        _blinkFrameCount = 0;
-                                        _nextBlinkFrame = 0;
-                                    }
-                                    else
-                                    {
-                                        _nextBlinkFrame++;
-                                    }
-                                }
-                                // 目の画像を表示
-                                TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
-                            }
-
-                            //フレーム書き出し
-                            vw.Write(outputMat);
+                            avg = (float)(sum / samplesRead) * _configManager.Config.sample_scale;
                         }
-
-                        if (frame % 10 == 0)
-                            progressCallback(((float)frame / averageListCopy.Count * 100).ToString("f0") + "%");
-
-                        if (frame % 1000 == 0)
-                            GC.Collect();
+                        averageList.Add(avg);
                     }
                 }
-                //後処理
-                foreach (Mat item in inputsMatBody)
-                {
-                    item.Release();
-                    item.Dispose();
-                }
-                foreach (Mat item in inputsMatEyes)
-                {
-                    item.Release();
-                    item.Dispose();
-                }
-
-                ReplaceAudio(tempMovPath, audioPath, outputPath);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
-
-                throw new Exception(ex.Message, ex.InnerException);
+                Debug.WriteLine($"AnalyzeAudio Error: {ex.Message}");
+                // エラー時は空リストを返す
+                return new List<float>();
             }
-            finally
-            {
-                File.Delete(tempMovPath);
-                GC.Collect();
-            }
-            convert2Transparent(outputPath);
-        }
-        /// <summary>
-        /// オーディオの入れ替え
-        /// </summary>
-        private void ReplaceAudio(string inputVideoPath, string inputAudioPath, string outputVideoPath)
-        {
-            FFMpeg.ReplaceAudio(inputVideoPath, inputAudioPath, outputVideoPath);
+            return averageList;
         }
 
         /// <summary>
-        /// 透過動画に変換
+        /// メイン実行処理（直列実行・エラーハンドリング強化版）
         /// </summary>
-        private void convert2Transparent(string inputMoviePath)
-        {
-            if (AlphaVideo)
-                try
-                {
-                    using (Process process = new Process())
-                    {
-                        string outPath = ConfigManager.CurrentDir + @"\outputs\" + Path.GetFileNameWithoutExtension(inputMoviePath) + ".mov";
-                        process.StartInfo.FileName = ConfigManager.CurrentDir + "\\ffmpeg\\ffmpeg.exe";
-                        // string bgColor = _configManager.Config.background.R.ToString("x2") + _configManager.Config.background.G.ToString("x2") + _configManager.Config.background.B.ToString("x2");
-                        string bgColor = $"{_configManager.Config.background.R:X2}{_configManager.Config.background.G:X2}{_configManager.Config.background.B:X2}";
-
-                        //-y 上書き
-                        process.StartInfo.Arguments = $@"-y -i {inputMoviePath} -vf colorkey={bgColor}:{_configManager.Config.similarity}:{_configManager.Config.blend} -pix_fmt argb -c:v qtrle {outPath}";
-                        process.Start();
-
-                        // コマンド終了まで待機
-                        process.WaitForExit();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex.ToString());
-                }
-        }
-        /// <summary>
-        /// 透過画像を重ね合わせる（アルファブレンド）
-        /// </summary>
-        /// <param name="src">合成先のMatオブジェクト</param>
-        /// <param name="add">合成するMatオブジェクト</param>
-        private void TransparentComposition(Mat src, Mat add)
-        {
-            if (src.Size() != add.Size())
-            {
-                throw new ArgumentException("画像のサイズが異なります。");
-            }
-
-            unsafe
-            {
-                int numPixels = src.Height * src.Width;
-
-                Parallel.For(0, numPixels, (index) =>
-                {
-                    byte* src_b = src.DataPointer + index * 4;
-                    byte* add_b = add.DataPointer + index * 4;
-
-                    float alpha = (float)add_b[3] / 255.0f; // 合成する画像のアルファ値を0-1の範囲に変換
-
-                    if (alpha > 0)
-                    {
-                        // アルファブレンド処理
-                        src_b[0] = (byte)((add_b[0] * alpha) + (src_b[0] * (1 - alpha))); // B
-                        src_b[1] = (byte)((add_b[1] * alpha) + (src_b[1] * (1 - alpha))); // G
-                        src_b[2] = (byte)((add_b[2] * alpha) + (src_b[2] * (1 - alpha))); // R
-
-                        // 合成後のアルファ値を不透明に設定 (不透明合成)
-                        src_b[3] = 255;
-                    }
-                });
-            }
-        }
-        /// <summary>
-        /// リップシンク処理の実行
-        /// </summary>
-        public void Run(List<Config.FileName> selectedAudioItems, Config.FileCollection fileCollection, Action<string> progressCallback)
+        public void Run(List<Config.FileName> selectedAudioItems, Config.FileCollection fileCollection, Action<string> onProgress, Action<string, string> onError)
         {
             if (fileCollection.Body.Count == 0)
             {
-                MessageBox.Show("画像がありません", "Error");
-                throw new Exception("Item == 0");
+                onError("画像ファイルが設定されていません。", "FileCollection.Body is empty.");
+                return;
             }
             if (selectedAudioItems.Count == 0)
             {
-                MessageBox.Show("オーディオファイルが選択されていません", "Error");
-                throw new Exception("Item == 0");
+                onError("オーディオファイルが選択されていません。", "selectedAudioItems is empty.");
+                return;
             }
-            //スレッド数を8に制限
-            ParallelOptions option = new ParallelOptions();
-            option.MaxDegreeOfParallelism = 8;
 
-            Parallel.ForEach(selectedAudioItems, option, p =>
+            int current = 0;
+            int total = selectedAudioItems.Count;
+
+            // Parallel.ForEachは廃止。直列実行で安定性を確保。
+            foreach (var item in selectedAudioItems)
             {
-                CreateMovie(p.Path, fileCollection, progressCallback);
-            });
+                current++;
+                try
+                {
+                    onProgress?.Invoke($"開始 ({current}/{total}): {item.Name}");
+
+                    CreateMovie(item.Path, fileCollection, (prog) =>
+                    {
+                        onProgress?.Invoke($"({current}/{total}) {item.Name}: {prog}");
+                    });
+                }
+                catch (Exception ex)
+                {
+                    string userMsg = $"ファイル「{item.Name}」の処理中にエラーが発生しました。\nこのファイルはスキップされます。";
+                    string devMsg = $"[ERROR] Target: {item.Path}\nException: {ex.GetType().Name}\nMessage: {ex.Message}\nStackTrace:\n{ex.StackTrace}";
+
+                    onError?.Invoke(userMsg, devMsg);
+                }
+            }
         }
+
         /// <summary>
-        /// オーディオ再生
+        /// 動画生成（パイプライン・デッドロック対策版）
         /// </summary>
+        private void CreateMovie(string audioPath, Config.FileCollection fileCollection, Action<string> progressCallback)
+        {
+            // パスチェック
+            string ffmpegExePath = Path.Combine(ConfigManager.CurrentDir, "ffmpeg", "ffmpeg.exe");
+            if (!File.Exists(ffmpegExePath)) throw new FileNotFoundException("ffmpeg.exeが見つかりません。", ffmpegExePath);
+            if (!File.Exists(audioPath)) throw new FileNotFoundException("音声ファイルが見つかりません。", audioPath);
+
+            // 一時ファイルパス
+            string tempVideoPath = Path.Combine(ConfigManager.CurrentDir, $"temp_{Guid.NewGuid().ToString("N").Substring(0, 8)}.mp4");
+            string outDir = Path.Combine(ConfigManager.CurrentDir, "outputs");
+            if (!Directory.Exists(outDir)) Directory.CreateDirectory(outDir);
+            string finalOutputPath = Path.Combine(outDir, Path.GetFileNameWithoutExtension(audioPath) + ".mp4");
+
+            // 音声解析
+            progressCallback("音声解析中...");
+            List<float> averageList = AnalyzeAudio(audioPath);
+            if (averageList.Count == 0) throw new Exception("音声データの解析結果が0件です。ファイルが破損している可能性があります。");
+
+            // 画像読み込み
+            List<Mat> inputsMatBody = new List<Mat>();
+            List<Mat> inputsMatEyes = new List<Mat>();
+            OpenCvSharp.Size size = new OpenCvSharp.Size();
+            bool checkSize = false;
+
+            try
+            {
+                foreach (var item in fileCollection.Body)
+                {
+                    if (!File.Exists(item.Path)) throw new FileNotFoundException($"Body画像なし: {item.Name}");
+                    var mat = Cv2.ImRead(item.Path, ImreadModes.Unchanged);
+                    if (mat.Empty()) throw new Exception($"Body画像読み込み失敗: {item.Name}");
+                    inputsMatBody.Add(mat);
+                    if (!checkSize) { size = new OpenCvSharp.Size(mat.Width, mat.Height); checkSize = true; }
+                }
+                foreach (var item in fileCollection.Eyes)
+                {
+                    if (!File.Exists(item.Path)) throw new FileNotFoundException($"Eyes画像なし: {item.Name}");
+                    var mat = Cv2.ImRead(item.Path, ImreadModes.Unchanged);
+                    if (mat.Empty()) throw new Exception($"Eyes画像読み込み失敗: {item.Name}");
+                    inputsMatEyes.Add(mat);
+                }
+
+                // サイズ偶数化補正 (動画コーデック要件)
+                if (size.Width % 2 != 0) size.Width++;
+                if (size.Height % 2 != 0) size.Height++;
+
+                for (int i = 0; i < inputsMatBody.Count; i++)
+                {
+                    var old = inputsMatBody[i]; inputsMatBody[i] = old.Resize(size); old.Dispose();
+                }
+                for (int i = 0; i < inputsMatEyes.Count; i++)
+                {
+                    var old = inputsMatEyes[i]; inputsMatEyes[i] = old.Resize(size); old.Dispose();
+                }
+
+                // --- パイプ処理開始 ---
+                // -loglevel error: ログ出力を減らしてバッファ溢れを防ぐ
+                // -preset ultrafast: 画質より速度優先（中間ファイルのため）
+                string args = $"-y -loglevel error -f rawvideo -vcodec rawvideo -s {size.Width}x{size.Height} -r {_configManager.Config.framerate} -pix_fmt bgra -i - -c:v libx264 -preset ultrafast -pix_fmt yuv420p \"{tempVideoPath}\"";
+
+                using (Process process = new Process())
+                {
+                    process.StartInfo.FileName = ffmpegExePath;
+                    process.StartInfo.Arguments = args;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.RedirectStandardInput = true;
+                    process.StartInfo.RedirectStandardError = true; // デッドロック対策
+
+                    // 標準エラー出力を非同期で読み捨てる
+                    process.ErrorDataReceived += (s, e) => { /* 必要ならログ出力 */ };
+
+                    process.Start();
+                    process.BeginErrorReadLine(); // 読み取り開始
+
+                    var bgColor = new Scalar(_configManager.Config.background.B, _configManager.Config.background.G, _configManager.Config.background.R, 255);
+                    byte[] buffer = new byte[size.Width * size.Height * 4]; // BGRA
+
+                    int divide = inputsMatBody.Count;
+                    float maxVol = averageList.Max();
+                    if (maxVol == 0) maxVol = 1.0f;
+                    float step = maxVol / divide / _configManager.Config.lipSync_threshold + 0.0001f;
+                    int lastPercent = -1;
+
+                    using (var baseMat = new Mat(size, MatType.CV_8UC4, bgColor))
+                    using (var stdin = process.StandardInput.BaseStream)
+                    {
+                        for (int frame = 0; frame < averageList.Count; frame++)
+                        {
+                            if (process.HasExited) throw new Exception($"FFmpegプロセスが予期せず終了しました。ExitCode: {process.ExitCode}");
+
+                            int dispNum = (int)(averageList[frame] / step);
+                            if (dispNum >= divide) dispNum = divide - 1;
+
+                            using (var outputMat = baseMat.Clone())
+                            {
+                                // Body合成
+                                TransparentComposition(outputMat, inputsMatBody[dispNum]);
+
+                                // 目パチ
+                                UpdateBlinkState();
+                                bool eye_exist = fileCollection.Eyes.Count > 0;
+
+                                if (eye_exist)
+                                {
+                                    int eyeIndex = 0;
+                                    if (_blinkFrameCount > 0) eyeIndex = CalculateEyeIndex(inputsMatEyes.Count);
+                                    TransparentComposition(outputMat, inputsMatEyes[eyeIndex]);
+                                }
+
+                                try
+                                {
+                                    // メモリコピー & パイプ書き込み & フラッシュ
+                                    Marshal.Copy(outputMat.Data, buffer, 0, buffer.Length);
+                                    stdin.Write(buffer, 0, buffer.Length);
+                                    stdin.Flush(); // 重要: バッファ詰まり防止
+                                }
+                                catch (IOException ex)
+                                {
+                                    Debug.WriteLine($"Pipe broken: {ex.Message}");
+                                    break;
+                                }
+                            }
+
+                            // 進捗通知（1%刻み）
+                            int percent = (int)((float)frame / averageList.Count * 100);
+                            if (percent > lastPercent)
+                            {
+                                lastPercent = percent;
+                                progressCallback($"{percent}%");
+                            }
+
+                            if (frame % 2000 == 0) GC.Collect();
+                        }
+                    } // stdin.Close() -> FFmpeg終了処理へ
+
+                    process.WaitForExit();
+                }
+
+                // 音声結合
+                progressCallback("音声結合中...");
+                ReplaceAudio(tempVideoPath, audioPath, finalOutputPath);
+
+                // 透過動画
+                if (AlphaVideo)
+                {
+                    progressCallback("透過動画変換中...");
+                    convert2Transparent(finalOutputPath);
+                }
+            }
+            finally
+            {
+                // リソース解放
+                foreach (var m in inputsMatBody) m?.Dispose();
+                foreach (var m in inputsMatEyes) m?.Dispose();
+                inputsMatBody.Clear();
+                inputsMatEyes.Clear();
+
+                if (File.Exists(tempVideoPath)) try { File.Delete(tempVideoPath); } catch { }
+                GC.Collect();
+            }
+        }
+
+        private void UpdateBlinkState()
+        {
+            _frameCount++;
+            if (_blinkFrameCount == 0)
+            {
+                int interval = (int)(_configManager.Config.framerate * (1.0f / _configManager.Config.blink_frequency));
+                if (interval > 0 && _frameCount % interval == 0)
+                {
+                    _blinkFrameCount = 1;
+                    _nextBlinkFrame = 0;
+                }
+            }
+        }
+
+        private int CalculateEyeIndex(int totalFrames)
+        {
+            int phaseLength = totalFrames;
+            int normalized = _nextBlinkFrame % (phaseLength * 2 - 2);
+            int idx = (normalized < phaseLength) ? normalized : phaseLength - (normalized - phaseLength) - 2;
+
+            if (_nextBlinkFrame >= (totalFrames * 2 - 2)) { _blinkFrameCount = 0; _nextBlinkFrame = 0; }
+            else { _nextBlinkFrame++; }
+            return idx;
+        }
+
+        private void ReplaceAudio(string inputVideo, string inputAudio, string outputVideo)
+        {
+            string ffmpeg = Path.Combine(ConfigManager.CurrentDir, "ffmpeg", "ffmpeg.exe");
+            string args = $"-y -i \"{inputVideo}\" -i \"{inputAudio}\" -c:v copy -c:a aac -map 0:v -map 1:a -shortest \"{outputVideo}\"";
+
+            using (var p = new Process())
+            {
+                p.StartInfo.FileName = ffmpeg;
+                p.StartInfo.Arguments = args;
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                p.Start();
+                p.WaitForExit();
+            }
+        }
+
+        private void convert2Transparent(string inputMoviePath)
+        {
+            try
+            {
+                string outPath = Path.Combine(ConfigManager.CurrentDir, "outputs", Path.GetFileNameWithoutExtension(inputMoviePath) + ".mov");
+                string ffmpeg = Path.Combine(ConfigManager.CurrentDir, "ffmpeg", "ffmpeg.exe");
+                string bgColorHex = $"{_configManager.Config.background.R:X2}{_configManager.Config.background.G:X2}{_configManager.Config.background.B:X2}";
+                string args = $"-y -i \"{inputMoviePath}\" -vf colorkey={bgColorHex}:{_configManager.Config.similarity}:{_configManager.Config.blend} -c:v qtrle \"{outPath}\"";
+
+                using (var p = new Process())
+                {
+                    p.StartInfo.FileName = ffmpeg;
+                    p.StartInfo.Arguments = args;
+                    p.StartInfo.UseShellExecute = false;
+                    p.StartInfo.CreateNoWindow = true;
+                    p.Start();
+                    p.WaitForExit();
+                }
+            }
+            catch (Exception ex) { Debug.WriteLine(ex.Message); }
+        }
+
+        private void TransparentComposition(Mat src, Mat add)
+        {
+            if (src.Size() != add.Size()) return;
+            unsafe
+            {
+                int len = src.Height * src.Width;
+                byte* s = src.DataPointer;
+                byte* a = add.DataPointer;
+                for (int i = 0; i < len; i++)
+                {
+                    int idx = i * 4;
+                    float alpha = a[idx + 3] / 255.0f;
+                    if (alpha > 0)
+                    {
+                        s[idx] = (byte)((a[idx] * alpha) + (s[idx] * (1 - alpha)));     // B
+                        s[idx + 1] = (byte)((a[idx + 1] * alpha) + (s[idx + 1] * (1 - alpha))); // G
+                        s[idx + 2] = (byte)((a[idx + 2] * alpha) + (s[idx + 2] * (1 - alpha))); // R
+                        s[idx + 3] = 255;
+                    }
+                }
+            }
+        }
+
         public void PlayAudio(string audio_path)
         {
             if (_outputDevice.PlaybackState == PlaybackState.Playing)
@@ -434,15 +421,11 @@ namespace Lip_Sync_Generator_2
             }
             try
             {
-                //オーディオ再生
-                AudioFileReader afr = new AudioFileReader(audio_path);
+                var afr = new AudioFileReader(audio_path);
                 _outputDevice.Init(afr);
                 _outputDevice.Play();
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-            }
+            catch (Exception ex) { Debug.WriteLine(ex.Message); }
         }
     }
 }

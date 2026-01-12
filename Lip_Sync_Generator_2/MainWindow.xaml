@@ -80,9 +80,15 @@
                 <lvc:CartesianChart x:Name="audioChart" Hoverable="False" Background="White"  />
             </Border>
 
-            <ScrollViewer Grid.Row="3" Grid.Column="0"  VerticalScrollBarVisibility="Auto" MaxHeight="150" >
-                <TextBlock x:Name="Notice_TextBlock"  TextWrapping="Wrap" Text="通知領域" Height="auto" />
-            </ScrollViewer>
+            <!-- 変更後: TextBox (読み取り専用・コピー可能) -->
+            <TextBox Grid.Row="3" Grid.Column="0" 
+         x:Name="Notice_TextBlock"
+         TextWrapping="Wrap" 
+         Text="通知領域" 
+         IsReadOnly="True" 
+         VerticalScrollBarVisibility="Auto" 
+         MaxHeight="150"
+         AcceptsReturn="True" />
 
             <TabControl Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Width="300" >
                 <TabItem Header="画像設定">
